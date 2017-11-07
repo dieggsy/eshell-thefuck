@@ -47,3 +47,25 @@
           new-commands))))
    :enabled t))
 
+(defvar esh-tf--rule-git-not-command
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((output (oref command :output)))
+       (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
+            (or (string-match-p "The most similar command" output)
+                (string-match-p "Did you mean" output)))))
+   :get-new-command
+   (lambda (command)
+     (let* ((output (oref command :output))
+            (broken-cmd (and (string-match "git: '\\([^']*\\)' is not a git command"
+                                           output)
+                             (match-string 1 output)))
+            (matched (esh-tf--get-all-matched-commands
+                      output
+                      :separator
+                      '("The most similar command"
+                        "Did you mean"))))
+       (message "matched: %S" matched)
+       (esh-tf--replace-command command broken-cmd matched)))
+   :enabled t))

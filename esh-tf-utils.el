@@ -85,6 +85,57 @@
                              append (esh-tf-get-corrected-commands rule command))))
     (esh-tf--organize-commands corrected)))
 
+(cl-defun esh-tf--get-all-matched-commands (stderr &key (separator "Did you mean"))
+  (when (not (listp separator))
+    (setq separator (list separator)))
+  (let (should-yield)
+    (cl-loop for line in (split-string stderr "\n" 'omit-nulls " ")
+             as clean-for = t
+             do (cl-loop named inner
+                         for sep in separator
+                         if (string-match-p sep line)
+                         do (progn (setq should-yield t
+                                         clean-for nil)
+                                   (cl-return-from inner)))
+             if (and clean-for should-yield)
+             collect (string-trim line))))
+
+(defun esh-tf--replace-regexp-in-string (regexp rep string &optional count)
+  (with-temp-buffer
+    (insert string)
+    (if count
+        (while (/= 0 count)
+          (beginning-of-buffer)
+          (and (search-forward-regexp regexp nil 'noerror)
+               (replace-match rep))
+          (setq count (1- count)))
+      (beginning-of-buffer)
+      (while (search-forward-regexp regexp nil 'noerror)
+        (replace-match rep)))
+    (buffer-string)))
+
+(defun esh-tf--replace-argument (script from to)
+  (let ((replaced-in-the-end (esh-tf--replace-regexp-in-string
+                              (format " %s$" (regexp-quote from))
+                              (format " %s" to)
+                              script
+                              1)))
+    (if (not (string= replaced-in-the-end script))
+        replaced-in-the-end
+      (esh-tf--replace-regexp-in-string (format " %s " (regexp-quote from))
+                                        (format " %s " to)
+                                        script
+                                        1))))
+
+(defun esh-tf--replace-command (command broken matched)
+  (let ((new-cmds (difflib-get-close-matches broken matched :cutoff 0.1)))
+    (mapcar
+     (lambda (cmd)
+       (esh-tf--replace-argument (oref command :script)
+                                 broken
+                                 (string-trim cmd)))
+     new-cmds)))
+
 ;; TODO: implement alias expansion
 ;; (defun esh-tf--expand-aliases (script)
 ;;   (let ((aliases eshell-command-aliases-list))
