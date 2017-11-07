@@ -1,7 +1,9 @@
 (require 'cl-lib)
 (require 'eshell)
+(require 'difflib)
 
-(defvar esh-tf--all-executables nil)
+
+(setq esh-tf--all-executables nil)
 
 (defun esh-tf--get-all-executables ()
   (or esh-tf--all-executables
@@ -30,6 +32,11 @@
                        (push (s-chop-prefix "eshell/" name) cands)))))
                 cands))))))
 
+(cl-defun esh-tf--get-closest (word possibilities &key (n 3) (cutoff 0.6) (fallback-to-first t))
+  (or (car (difflib-get-close-matches word possibilities :n n :cutoff cutoff))
+      (when fallback-to-first
+        (car possibilities))))
+
 (defun esh-tf--which (name)
   (let (program alias direct)
     (if (eq (aref name 0) eshell-explicit-command-char)
@@ -51,8 +58,32 @@
                 (eshell-search-path name)))))
     program))
 
-(defun esh-tf--format-raw-script (raw-script)
-  (string-trim (string-join ra_script " ")))
+(defun esh-tf--get-rules ()
+  (let (cands)
+    (mapatoms
+     (lambda (var)
+       (let ((name (symbol-name var)))
+         (when (and (or (get var 'variable-documentation)
+                        (and (boundp var) (not (keywordp var))))
+                    (string-prefix-p "esh-tf--rule-" name)
+                    (esh-tf-rule-p (symbol-value var))
+                    (oref (symbol-value var) :enabled))
+           (push (symbol-value var) cands)))))
+    cands))
+
+(defun esh-tf--organize-commands (corrected-commands)
+  (let ((no-dups (cl-remove-duplicates
+                  corrected-commands
+                  :key (lambda (x)
+                         (oref x :script)))))
+    (cl-sort no-dups #'< :key (lambda (x) (oref x :priority)))))
+
+(defun esh-tf--get-corrected-commands (command)
+  (let* ((rules (esh-tf--get-rules))
+         (corrected (cl-loop for rule in rules
+                             if (esh-tf-is-match rule command)
+                             append (esh-tf-get-corrected-commands rule command))))
+    (esh-tf--organize-commands corrected)))
 
 ;; TODO: implement alias expansion
 ;; (defun esh-tf--expand-aliases (script)
@@ -61,9 +92,5 @@
 ;;               (let ((def cadr cell))
 ;;                 (when string-match-p "\\$\\(?:[[:digit:]]\\|\\*\\)"
 ;;                       ))))))
-
-(defun esh-tf--get-output (script)
-  (when (get-buffer " *eshell-tf-process*"))
-  (let ((proc (start-process-shell-command "eshell-tf-process" (get-buffer-create) script)))))
 
 (provide 'esh-tf-utils)
