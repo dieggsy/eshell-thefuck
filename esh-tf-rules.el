@@ -69,3 +69,84 @@
        (message "matched: %S" matched)
        (esh-tf--replace-command command broken-cmd matched)))
    :enabled t))
+
+(defvar esh-tf--rule-cd-correction
+  ;; TODO: this should be able to replace cd anywhere in the command.
+  ;; TODO: looks like there's too many string-match-p's, pretty sure this
+  ;; should be fixed to one for eshell
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((output (downcase (oref command :output))))
+       (and (string-prefix-p "cd " (oref command :script))
+            (or (string-match-p "no such file or directory" output)
+                (string-match-p "cd: can't cd to" output)
+                (string-match-p "no such directory found" output)))))
+   :get-new-command
+   (lambda (command)
+     (let* ((sep (substring (concat (file-name-as-directory "a")
+                                    "b")
+                            1
+                            2))
+            (dest (split-string (cadr (oref command :script-parts))
+                                sep
+                                'omit-nulls))
+            (cwd default-directory))
+       (when (string= (car (last dest)) "")
+         (setq dest (butlast dest)))
+       (cl-loop for directory in dest
+                as best-matches = nil
+                do (cl-block body
+                     (cond ((string= directory ".")
+                            (cl-return-from body))
+                           ((string= directory "..")
+                            (setq cwd (car (split-string cwd sep 'omit-nulls)))
+                            (cl-return-from body)))
+                     (message "%S" directory)
+                     (setq best-matches
+                           (difflib-get-close-matches
+                            directory
+                            (mapcar
+                             #'file-name-nondirectory
+                             (cl-remove-if-not
+                              #'file-directory-p
+                              (directory-files
+                               cwd
+                               'full
+                               nil
+                               'nosort)))))
+                     (message "%S" (car best-matches))
+                     (if best-matches
+                         (setq cwd (expand-file-name (car best-matches) cwd)))))
+       (format "cd \"%s\"" cwd)))
+   :enabled t))
+
+(defvar esh-tf--rule-cd-mkdir
+  ;; TODO: this should be able to replace cd anywhere in the command.
+  ;; TODO: looks like there's too many string-match-p's, pretty sure this
+  ;; should be fixed to one for eshell
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((output (downcase (oref command :output))))
+       (and (string-prefix-p "cd " (oref command :script))
+            (or (string-match-p "no such file or directory" output)
+                (string-match-p "cd: can't cd to" output)
+                (string-match-p "no such directory found" output)
+                (string-match-p "the system cannot find the path specified." output)))))
+   :get-new-command
+   (lambda (command)
+     (replace-regexp-in-string "^cd \\(.*\\)"
+                               "mkdir -p \\1 && cd \\1"
+                               (oref command :script)))
+   :enabled t))
+
+(defvar esh-tf--rule-cd-parent
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (string= (oref command :script) "cd.."))
+   :get-new-command
+   (lambda (command)
+     "cd ..")
+   :enabled t))
