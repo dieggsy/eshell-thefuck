@@ -65,20 +65,20 @@ erase call to `eshell/fuck'."
 
 (defclass esh-tf-rule ()
   ((match :initarg :match
-          :initform nil
-          :type (or cons symbol)
+          :initform ignore
+          :type function
           :docuemntation "Function that determines whether command matches.")
    (get-new-command :initarg :get-new-command
-                    :initform nil
-                    :type (or cons symbol)
+                    :initform ignore
+                    :type function
                     :documentation "Function that gets the new command for current command.")
    (enabled :initarg :enabled
             :initform nil
             :type boolean
             :documentation "Whether rule is enabled.")
    (side-effect :initarg :side-effect
-                :initform nil
-                :type (or cons symbol)
+                :initform ignore
+                :type function
                 :documentation "Side effect function.")
    (priority :initarg :priority
              :initform 0
@@ -113,7 +113,7 @@ erase call to `eshell/fuck'."
            :documentation "Command to run.")
    (side-effect :initarg :side-effect
                 :initform nil
-                :type (or cons symbol)
+                :type (or null function)
                 :documentation "Side effect of command.")
    (priority :initarg :priority
              :initform 0
