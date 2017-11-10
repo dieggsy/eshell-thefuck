@@ -150,3 +150,32 @@
    (lambda (command)
      "cd ..")
    :enabled t))
+
+(defvar esh-tf--rule-chmod-x
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((script-parts (oref command :script-parts)))
+       (and (string-prefix-p "./" (oref command :script))
+            (string-match-p "permission denied" (downcase (oref command :output)))
+            (file-exists-p (car script-parts))
+            (not (file-executable-p (car script-parts))))))
+   :get-new-command
+   (lambda (command)
+     (format "chmod +x %s && %s"
+             (substring (car (oref command :script-parts)) 2)
+             (oref command :script)))
+   :enabled t))
+
+(defvar esh-tf--rule-cp-omitting-directory
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((output (downcase (oref command :output))))
+       (and (string-prefix-p "cp " (oref command :script))
+            (or (string-match-p "omitting directory" output)
+                (string-match-p "is a directory" output)))))
+   :get-new-command
+   (lambda (command)
+     (replace-regexp-in-string "^cp" "cp -a" (oref command :script)))
+   :enabled t))
