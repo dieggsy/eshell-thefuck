@@ -2,35 +2,31 @@
 (require 'eshell)
 (require 'difflib)
 
-
-(setq esh-tf--all-executables nil)
-
 (defun esh-tf--get-all-executables ()
-  (or esh-tf--all-executables
-      (setq esh-tf--all-executables
-            (delete-dups
-             (append
-              (mapcar #'file-name-base
-                      (cl-loop
-                       for path in (split-string (getenv "PATH") ":")
-                       when (file-exists-p path)
-                       append
-                       (cl-remove-if-not
-                        #'file-executable-p
-                        (directory-files
-                         path
-                         'full
-                         directory-files-no-dot-files-regexp
-                         'nosort))))
-              (let (cands)
-                (mapatoms
-                 (lambda (x)
-                   (let ((name (symbol-name x)))
-                     (when (and (fboundp x)
-                                (or esh-tf-include-lisp-commands
-                                    (string-prefix-p "eshell/" name)))
-                       (push (s-chop-prefix "eshell/" name) cands)))))
-                cands))))))
+  (setq esh-tf--all-executables
+        (delete-dups
+         (append
+          (mapcar #'file-name-base
+                  (cl-loop
+                   for path in (split-string (getenv "PATH") ":")
+                   when (file-exists-p path)
+                   append
+                   (cl-remove-if-not
+                    #'file-executable-p
+                    (directory-files
+                     path
+                     'full
+                     directory-files-no-dot-files-regexp
+                     'nosort))))
+          (let (cands)
+            (mapatoms
+             (lambda (x)
+               (let ((name (symbol-name x)))
+                 (when (and (fboundp x)
+                            (or esh-tf-include-lisp-commands
+                                (string-prefix-p "eshell/" name)))
+                   (push (s-chop-prefix "eshell/" name) cands)))))
+            cands)))))
 
 (cl-defun esh-tf--get-closest (word possibilities &key (n 3) (cutoff 0.6) (fallback-to-first t))
   (or (car (difflib-get-close-matches word possibilities :n n :cutoff cutoff))
