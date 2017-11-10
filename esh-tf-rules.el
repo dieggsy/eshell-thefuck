@@ -179,3 +179,56 @@
    (lambda (command)
      (replace-regexp-in-string "^cp" "cp -a" (oref command :script)))
    :enabled t))
+(defvar esh-tf--rule-sudo
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((output (downcase (oref command :output)))
+           (script-parts (oref command :script-parts))
+           (patterns '("permission denied"
+                       "eacces"
+                       "pkg: insufficient privileges"
+                       "you cannot perform this operation unless you are root"
+                       "non-root users cannot"
+                       "operation not permitted"
+                       "root privilege"
+                       "this command has to be run under the root user."
+                       "this operation requires root."
+                       "requested operation requires superuser privilege"
+                       "must be run as root"
+                       "must run as root"
+                       "must be superuser"
+                       "must be root"
+                       "need to be root"
+                       "need root"
+                       "needs to be run as root"
+                       "only root can "
+                       "you don\"t have access to the history db."
+                       "authentication is required"
+                       "edspermissionerror"
+                       "you don\"t have write permissions"
+                       "use `sudo`"
+                       "SudoRequiredError"
+                       "error: insufficient privileges")))
+       (cl-block match
+         (when (and (not (member "&&" script-parts))
+                    (string= (car script-parts) "sudo"))
+           (cl-return-from match nil))
+         (cl-loop
+          for pattern in patterns
+          if (string-match-p (regexp-quote pattern) output)
+          do (cl-return-from match t)))))
+   :get-new-command
+   (lambda (command)
+     (let ((script (oref command :script)))
+       (cond ((string-match-p "&&" script)
+              (format "sudo sh -c \"%s\"" (cl-remove-if
+                                           (lambda (part)
+                                             (string= part "sudo"))
+                                           (oref command :script-parts))))
+             ((string-match-p ">" script)
+              (format "sudo sh -c \"%s\"" (replace-regexp-in-string "\"" "\\\\\"" "\"hello\"")))
+             (t (format "sudo %s" script)))))
+   :enabled t))
+
+
