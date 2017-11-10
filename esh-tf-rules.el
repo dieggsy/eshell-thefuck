@@ -45,6 +45,7 @@
              (append (list new-command) (cdr (oref command :script-parts)))
              " "))
           new-commands))))
+   :priority 3000
    :enabled t))
 
 (defvar esh-tf--rule-git-not-command
