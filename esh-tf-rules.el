@@ -1,3 +1,5 @@
+(require 'cl-lib)
+
 (defun esh-tf--get-used-executables (command)
   (let ((not-corrected (;; We just want to exclude "fuck" and the last
                         ;; command, is cddr may be too much?
@@ -293,6 +295,61 @@
               (format "sudo sh -c \"%s\""
                       (esh-tf--escape-quotes (oref command :script-parts))))
              (t (format "sudo %s" script)))))
+   :enabled t))
+
+(defvar esh-tf--rule-ls-all
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (esh-tf--for-app "ls"
+       (string= (string-trim (oref command :output)) "")))
+   :get-new-command
+   (lambda (command)
+     (string-join (append '("ls" "-a") (cdr (oref command :script-parts))) " "))
+   :enabled t))
+
+(defvar esh-tf--rule-mkdir-p
+  (esh-tf-rule
+   :match
+   (esh-tf--sudo-support
+     (lambda (command)
+       (and (string-match-p "mkdir" (oref command :script))
+            (string-match-p "No such file or directory" (oref command :output))
+            t)))
+   :get-new-command
+   (esh-tf--sudo-support
+     (lambda (command)
+       (replace-regexp-in-string (rx bow "mkdir " (group (0+ nonl)))
+                                 "mkdir -p \\1"
+                                 (oref command :script))))
+   :enabled t))
+
+(defvar esh-tf--rule-touch
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (esh-tf--for-app "touch"
+       (and (string-match-p "No such file or directory" (oref command :output)))))
+   :get-new-command
+   (lambda (command)
+     (let* ((output (oref command :output))
+            (path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
+                                     output)
+                       (match-string 1 output))))
+       (format "mkdir -p %s && %s" path (oref command :script))))
+   :enabled t))
+
+(defvar esh-tf--rule-dry
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((split-command (oref command :script-parts)))
+       (and (>= (length split-command) 2)
+            (string= (car split-command) (cadr split-command)))))
+   :get-new-command
+   (lambda (command)
+     (string-join (cdr (oref command :script-parts)) " "))
+   :priority 900
    :enabled t))
 
 

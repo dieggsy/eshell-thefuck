@@ -1,0 +1,287 @@
+* eshell-thefuck
+This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It's still very much a work
+in progress (see te todo list below), but if you like the idea, testing or
+contributions are most welcome!
+
+** Todo [0/3]
+*** TODO [#A] UI improvement
+Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
+swallow every key here. We also don't /need/ to since we don't have the same UI
+limitations of a terminal emulator. We could probably just move the prompt to
+eshell's next prompt and add a sparse keymap there for up/down/RET/C-c.
+*** TODO [#B] More "generic" rules
+E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just if
+it starts with cd. This involves both ~esh-tf--for-app~ and the actual new
+commands returned in ~:get-new-commmand~.
+*** TODO [#C] Rule coverage [0/2]
+**** TODO Default [13/116]
+***** TODO ~ag_literal~
+Adds ~-Q~ to ~ag~ when suggested
+***** TODO ~aws_cli~
+Fixes misspelled commands like ~aws dynamdb scan~
+***** TODO ~cargo~
+Runs ~cargo build~ instead of ~cargo~
+***** TODO ~cargo_no_command~
+Fixes wrongs commands like ~cargo buid~
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-correction][cd-correction]]
+CLOSED: [2017-11-10 Fri 21:46]
+Spellchecks and correct failed cd commands
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-mkdir][cd-mkdir]]
+CLOSED: [2017-11-10 Fri 21:47]
+Creates directories before cd'ing into them
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-parent][cd-parent]]
+CLOSED: [2017-11-10 Fri 21:48]
+Changes ~cd..~ to ~cd ..~
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-chmod-x][chmod-x]]
+CLOSED: [2017-11-10 Fri 21:48]
+Add execution bit
+***** TODO ~composer_not_command~
+Fixes composer command name
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cp-omitting-directory][cp-omitting-directory]]
+CLOSED: [2017-11-10 Fri 21:48]
+Adds ~-a~ when you ~cp~ directory
+***** TODO ~cpp11~
+Adds missing ~-std=c++11~ to ~g++~ or ~clang++~
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-dirty-untar][dirty-untar]]
+CLOSED: [2017-11-10 Fri 21:51]
+Fixes ~tar x~ command that untarred in the current directory
+***** TODO ~dirty_unzip~
+Fixes ~unzip~ command that unzipped in the current directory
+***** TODO ~django_south_ghost~
+Adds ~--delete-ghost-migrations~ to failed because ghosts django south migration
+***** TODO ~django_south_merge~
+Adds ~--merge~ to inconsistent django south migration
+***** TODO ~docker_not_command~
+Fixes wrong docker commands like ~docker tags~
+***** DONE ~dry~
+CLOSED: [2017-11-11 Sat 12:36]
+Fixes repetitions like ~git git push~
+***** TODO ~fab_command_not_found~
+Fix misspelled fabric commands
+***** TODO ~fix_alt_space~
+Replaces Alt+Space with Space character
+***** TODO ~fix_file~
+Opens a file with an error in your ~$EDITOR~
+***** TODO ~gem_unknown_command~
+Fixes wrong ~gem~ commands
+***** TODO ~git_add~
+Fixes "pathspec 'foo' did not match any file(s) known to git."
+***** TODO ~git_add_force~
+Adds ~--force~ to ~git add <pathspec>...~ when paths are .gitignore'd
+***** TODO ~git_bisect_usage~
+Fixes ~git bisect strt~, ~git bisect goood~, ~git bisect rset~, etc. when bisecting
+***** TODO ~git_branch_delete~
+Changes ~git branch -d~ to ~git branch -D~
+***** TODO ~git_branch_exists~
+Offers ~git branch -d foo~, ~git branch -D foo~ or ~git checkout foo~ when creating a branch that already exists
+***** TODO ~git_branch_list~
+Catches ~git branch list~ in place of ~git branch~ and removes created branch
+***** TODO ~git_checkout~
+Fixes branch name or creates new branch
+***** TODO ~git_diff_no_index~
+Adds ~--no-index~ to previous ~git diff~ on untracked files
+***** TODO ~git_diff_staged~
+Adds ~--staged~ to previous ~git diff~ with unexpected output
+***** TODO ~git_fix_stash~
+Fixes ~git stash~ commands (misspelled subcommand and missing ~save~)
+***** TODO ~git_flag_after_filename~
+Fixes ~fatal: bad flag '...' after filename~
+***** TODO ~git_help_aliased~
+Fixes ~git help <alias>~ commands replacing <alias> with the aliased command
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-git-not-command][git-not-command]]
+CLOSED: [2017-11-10 Fri 21:44]
+Fixes wrong git commands like ~git brnch~
+***** TODO ~git_pull~
+Sets upstream before executing previous ~git pull~
+***** TODO ~git_pull_clone~
+Clones instead of pulling when the repo does not exist
+***** TODO ~git_pull_uncommitted_changes~
+Stashes changes before pulling and pops them afterwards
+***** TODO ~git_push~
+Adds ~--set-upstream origin $branch~ to previous failed ~git push~
+***** TODO ~git_push_different_branch_names~
+Fixes pushes when local brach name does not match remote branch name
+***** TODO ~git_push_pull~
+Runs ~git pull~ when ~push~ was rejected
+***** TODO ~git_push_without_commits~
+Creates an initial commit if you forget and only ~git add .~, when setting up a new project
+***** TODO ~git_rebase_no_changes~
+Runs ~git rebase --skip~ instead of ~git rebase --continue~ when there are no changes
+***** TODO ~git_remote_delete~
+Replaces ~git remote delete remote_name~ with ~git remote remove remote_name~
+***** TODO ~git_rm_local_modifications~
+Adds ~-f~ or ~--cached~ when you try to ~rm~ a locally modified file
+***** TODO ~git_rm_recursive~
+Adds ~-r~ when you try to ~rm~ a directory
+***** TODO ~git_rm_staged~
+Adds ~-f~ or ~--cached~ when you try to ~rm~ a file with staged changes
+***** TODO ~git_rebase_merge_dir~
+Offers ~git rebase (--continue | --abort | --skip)~ or removing the ~.git/rebase-merge~ dir when a rebase is in progress
+***** TODO ~git_remote_seturl_add~
+Runs ~git remote add~ when ~git remote set_url~ on nonexistant remote
+***** TODO ~git_stash~
+Stashes your local modifications before rebasing or switching branch
+***** TODO ~git_stash_pop~
+Adds your local modifications before popping stash, then resets
+***** TODO ~git_tag_force~
+Adds ~--force~ to ~git tag <tagname>~ when the tag already exists
+***** TODO ~git_two_dashes~
+Adds a missing dash to commands like ~git commit -amend~ or ~git rebase -continue~
+***** TODO ~go_run~
+Appends ~.go~ extension when compiling/running Go programs
+***** TODO ~gradle_no_task~
+Fixes not found or ambiguous ~gradle~ task
+***** TODO ~gradle_wrapper~
+Replaces ~gradle~ with ~./gradlew~
+***** TODO ~grep_arguments_order~
+Fixes grep arguments order for situations like ~grep -lir . test~
+***** TODO ~grep_recursive~
+Adds ~-r~ when you trying to ~grep~ directory
+***** TODO ~grunt_task_not_found~
+Fixes misspelled ~grunt~ commands
+***** TODO ~gulp_not_task~
+Fixes misspelled ~gulp~ tasks
+***** TODO ~has_exists_script~
+Prepends ~./~ when script/binary exists
+***** TODO ~heroku_not_command~
+Fixes wrong ~heroku~ commands like ~heroku log~
+***** TODO ~history~
+Tries to replace command with most similar command from history
+***** TODO ~hostscli~
+Tries to fix ~hostscli~ usage
+***** TODO ~ifconfig_device_not_found~
+Fixes wrong device names like ~wlan0~ to ~wlp2s0~
+***** TODO ~java~
+Removes ~.java~ extension when running Java programs
+***** TODO ~javac~
+Appends missing ~.java~ when compiling Java files
+***** TODO ~lein_not_task~
+Fixes wrong ~lein~ tasks like ~lein rpl~
+***** TODO ~ln_no_hard_link~
+Catches hard link creation on directories, suggest symbolic link
+***** TODO ~ln_s_order~
+Fixes ~ln -s~ arguments order
+***** DONE ~ls_all~
+CLOSED: [2017-11-11 Sat 09:39]
+Adds ~-A~ to ~ls~ when output is empty
+***** TODO ~ls_lah~
+Adds ~-lah~ to ~ls~
+***** TODO ~man~
+Changes manual section
+***** TODO ~man_no_space~
+Fixes man commands without spaces, for example ~mandiff~
+***** TODO ~mercurial~
+Fixes wrong ~hg~ commands
+***** TODO ~missing_space_before_subcommand~
+Fixes command with missing space like ~npminstall~
+***** DONE ~mkdir_p~
+CLOSED: [2017-11-11 Sat 12:07]
+Adds ~-p~ when you trying to create directory without parent
+***** TODO ~mvn_no_command~
+Adds ~clean package~ to ~mvn~
+***** TODO ~mvn_unknown_lifecycle_phase~
+Fixes misspelled lifecycle phases with ~mvn~
+***** TODO ~npm_missing_script~
+Fixes ~npm~ custom script name in ~npm run-script <script>~
+***** TODO ~npm_run_script~
+Adds missing ~run-script~ for custom ~npm~ scripts
+***** TODO ~npm_wrong_command~
+Fixes wrong npm commands like ~npm urgrade~
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-no-command][no-command]]
+CLOSED: [2017-11-10 Fri 21:37]
+Fixes wrong console commands, for example ~vom/vim~
+***** TODO ~no_such_file~
+Creates missing directories with ~mv~ and ~cp~ commands
+***** TODO ~open~
+Either prepends ~http://~ to address passed to ~open~ or create a new file or directory and passes it to ~open~
+***** TODO ~pip_unknown_command~
+Fixes wrong ~pip~ commands, for example ~pip instatl/pip install~
+***** TODO ~php_s~
+Replaces ~-s~ by ~-S~ when trying to run a local php server
+***** TODO ~port_already_in_use~
+Kills process that bound port
+***** TODO ~prove_recursively~
+Adds ~-r~ when called with directory
+***** TODO ~python_command~
+Prepends ~python~ when you trying to run not executable/without ~./~ python script
+***** TODO ~python_execute~
+Appends missing ~.py~ when executing Python files
+***** TODO ~quotation_marks~
+Fixes uneven usage of ~'~ and ~"~ when containing args'
+***** TODO ~path_from_history~
+Replaces not found path with similar absolute path from history
+***** TODO ~react_native_command_unrecognized~
+Fixes unrecognized ~react-native~ commands
+***** TODO ~remove_trailing_cedilla~
+Remove trailling cedillas ~ç~, a common typo for european keyboard layouts
+***** TODO ~rm_dir~
+Adds ~-rf~ when you trying to remove directory
+***** TODO ~scm_correction~
+Corrects wrong scm like ~hg log~ to ~git log~
+***** TODO ~sed_unterminated_s~
+Adds missing '/' to ~sed~'s ~s~ commands
+***** TODO ~sl_ls~
+Changes ~sl~ to ~ls~
+***** TODO ~ssh_known_hosts~
+Removes host from ~known_hosts~ on warning
+***** DONE [[file:esh-tf-rules.el::esh-tf--rule-sudo][sudo]]
+CLOSED: [2017-11-10 Fri 21:51]
+Prepends ~sudo~ to previous command if it failed because of permissions
+***** TODO ~sudo_command_from_user_path~
+Runs commands from users ~$PATH~ with ~sudo~
+***** TODO ~switch_lang~
+Switches command from your local layout to en
+***** TODO ~systemctl~
+Correctly orders parameters of confusing ~systemctl~
+***** TODO ~test.py~
+Runs ~py.test~ instead of ~test.py~
+***** DONE ~touch~
+CLOSED: [2017-11-11 Sat 12:28]
+Creates missing directories before "touching"
+***** TODO ~tsuru_login~
+Runs ~tsuru login~ if not authenticated or session expired
+***** TODO ~tsuru_not_command~
+Fixes wrong ~tsuru~ commands like ~tsuru shell~
+***** TODO ~tmux~
+Fixes ~tmux~ commands
+***** TODO ~unknown_command~
+Fixes hadoop hdfs-style "unknown command", for example adds missing '-' to the command on ~hdfs dfs ls~
+***** TODO ~vagrant_up~
+Starts up the vagrant instance
+***** TODO ~whois~
+Fixes ~whois~ command
+***** TODO ~workon_doesnt_exists~
+Fixes ~virtualenvwrapper~ env name os suggests to create new.
+***** TODO ~yarn_alias~
+Fixes aliased ~yarn~ commands like ~yarn ls~
+***** TODO ~yarn_command_not_found~
+Fixes misspelled ~yarn~ commands
+***** TODO ~yarn_command_replaced~
+Fixes replaced ~yarn~ commands
+***** TODO ~yarn_help~
+Makes it easier to open ~yarn~ documentation
+**** TODO Specific platform [0/12]
+***** TODO ~apt_get~
+Installs app from apt if it not installed (requires ~python-commandnotfound~ / ~python3-commandnotfound~)
+***** TODO ~apt_get_search~
+Changes trying to search using ~apt-get~ with searching using ~apt-cache~
+***** TODO ~apt_invalid_operation~
+Fixes invalid ~apt~ and ~apt-get~ calls, like ~apt-get isntall vim~
+***** TODO ~brew_cask_dependency~
+Installs cask dependencies
+***** TODO ~brew_install~
+Fixes formula name for ~brew install~
+***** TODO ~brew_link~
+Adds ~--overwrite --dry-run~ if linking fails
+***** TODO ~brew_uninstall~
+Adds ~--force~ to ~brew uninstall~ if multiple versions were installed
+***** TODO ~brew_unknown_command~
+Fixes wrong brew commands, for example ~brew docto/brew doctor~
+***** TODO ~brew_update_formula~
+Turns ~brew update <formula>~ into ~brew upgrade <formula>~
+***** TODO ~dnf_no_such_command~
+Fixes mistyped DNF commands
+***** TODO ~pacman~
+Installs app with ~pacman~ if it is not installed (uses ~yaourt~ if available)
+***** TODO ~pacman_not_found~
+Fixes package name with ~pacman~ or ~yaourt~.
