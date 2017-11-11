@@ -18,32 +18,35 @@
 (defvar esh-tf--rule-no-command
   (esh-tf-rule
    :match
-   (lambda (command)
-     (let ((cmd (car (oref command :script-parts))))
-       (and (not (esh-tf--which cmd))
-            (string-match-p "not found" (oref command :output))
-            (difflib-get-close-matches cmd (esh-tf--get-all-executables)))))
+   (esh-tf--sudo-support
+     (lambda (command)
+       (let ((cmd (car (oref command :script-parts))))
+         (and (not (esh-tf--which cmd))
+              (string-match-p "not found" (oref command :output))
+              (difflib-get-close-matches cmd (esh-tf--get-all-executables))
+              t))))
    :get-new-command
-   (lambda (command)
-     (let* ((old-command (car (oref command :script-parts)))
-            (already-used (esh-tf--get-closest
-                           old-command
-                           (esh-tf--get-used-executables command)
-                           :fallback-to-first nil))
-            (new-cmds (when already-used (list already-used))))
-       (setq new-commands
-             (append new-cmds
-                     (cl-remove-if (lambda (cmd)
-                                     (member cmd new-cmds))
-                                   (difflib-get-close-matches
-                                    old-command
-                                    (esh-tf--get-all-executables)))))
-       (mapcar
-        (lambda (new-command)
-          (string-join
-           (append (list new-command) (cdr (oref command :script-parts)))
-           " "))
-        new-commands)))
+   (esh-tf--sudo-support
+     (lambda (command)
+       (let* ((old-command (car (oref command :script-parts)))
+              (already-used (esh-tf--get-closest
+                             old-command
+                             (esh-tf--get-used-executables command)
+                             :fallback-to-first nil))
+              (new-cmds (when already-used (list already-used))))
+         (setq new-commands
+               (append new-cmds
+                       (cl-remove-if (lambda (cmd)
+                                       (member cmd new-cmds))
+                                     (difflib-get-close-matches
+                                      old-command
+                                      (esh-tf--get-all-executables)))))
+         (mapcar
+          (lambda (new-command)
+            (string-join
+             (append (list new-command) (cdr (oref command :script-parts)))
+             " "))
+          new-commands))))
    :priority 3000
    :enabled t))
 
@@ -51,10 +54,11 @@
   (esh-tf-rule
    :match
    (lambda (command)
-     (let ((output (oref command :output)))
-       (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
-            (or (string-match-p "The most similar command" output)
-                (string-match-p "Did you mean" output)))))
+     (esh-tf--for-app ("git" "hub")
+       (let ((output (oref command :output)))
+         (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
+              (or (string-match-p "The most similar command" output)
+                  (string-match-p "Did you mean" output))))))
    :get-new-command
    (lambda (command)
      (let* ((output (oref command :output))
@@ -74,14 +78,15 @@
   ;; TODO: this should be able to replace cd anywhere in the command.
   ;; TODO: looks like there's too many string-match-p's, pretty sure this
   ;; should be fixed to one for eshell
+  ;; TODO: check out the behavior of "cd cd foo" in eshell
   (esh-tf-rule
    :match
    (lambda (command)
-     (let ((output (downcase (oref command :output))))
-       (and (string-prefix-p "cd " (oref command :script))
-            (or (string-match-p "no such file or directory" output)
-                (string-match-p "cd: can't cd to" output)
-                (string-match-p "no such directory found" output)))))
+     (esh-tf--for-app "cd"
+       (let ((output (downcase (oref command :output))))
+         (or (string-match-p "no such file or directory" output)
+             (string-match-p "cd: can't cd to" output)
+             (string-match-p "no such directory found" output)))))
    :get-new-command
    (lambda (command)
      (let* ((sep (substring (concat (file-name-as-directory "a")
@@ -128,12 +133,12 @@
   (esh-tf-rule
    :match
    (lambda (command)
-     (let ((output (downcase (oref command :output))))
-       (and (string-prefix-p "cd " (oref command :script))
-            (or (string-match-p "no such file or directory" output)
-                (string-match-p "cd: can't cd to" output)
-                (string-match-p "no such directory found" output)
-                (string-match-p "the system cannot find the path specified." output)))))
+     (esh-tf--for-app "cd"
+       (let ((output (downcase (oref command :output))))
+         (or (string-match-p "no such file or directory" output)
+             (string-match-p "cd: can't cd to" output)
+             (string-match-p "no such directory found" output)
+             (string-match-p "the system cannot find the path specified." output)))))
    :get-new-command
    (lambda (command)
      (replace-regexp-in-string "^cd \\(.*\\)"
@@ -168,16 +173,21 @@
    :enabled t))
 
 (defvar esh-tf--rule-cp-omitting-directory
+  ;; TODO: Should be able to replace cp anywhere in command
   (esh-tf-rule
    :match
-   (lambda (command)
-     (let ((output (downcase (oref command :output))))
-       (and (string-prefix-p "cp " (oref command :script))
+   (esh-tf--sudo-support
+     (lambda (command)
+       (esh-tf--for-app "cp"
+         (let ((output (downcase (oref command :output))))
+           (and
             (or (string-match-p "omitting directory" output)
-                (string-match-p "is a directory" output)))))
+                (string-match-p "is a directory" output))
+            t)))))
    :get-new-command
-   (lambda (command)
-     (replace-regexp-in-string "^cp" "cp -a" (oref command :script)))
+   (esh-tf--sudo-support
+     (lambda (command)
+       (replace-regexp-in-string "^cp" "cp -a" (oref command :script))))
    :enabled t))
 
 (defun esh-tf--is-tar-extract (cmd)
@@ -204,10 +214,11 @@
   (esh-tf-rule
    :match
    (lambda (command)
-     (let ((script (oref command :script)))
-       (and (not (string-match-p "-C" script))
-            (esh-tf--is-tar-extract script)
-            (esh-tf--tar-file (oref command :script-parts)))))
+     (esh-tf--for-app "tar"
+       (let ((script (oref command :script)))
+         (and (not (string-match-p "-C" script))
+              (esh-tf--is-tar-extract script)
+              (esh-tf--tar-file (oref command :script-parts))))))
    :get-new-command
    (lambda (command)
      (let ((dir (eshell-quote-argument (cadr (esh-tf--tar-file
