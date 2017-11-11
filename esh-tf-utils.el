@@ -132,6 +132,36 @@
                                  (string-trim cmd)))
      new-cmds)))
 
+(defun esh-tf--escape-quotes (str)
+  (replace-regexp-in-string "\"" "\\\\\"" str))
+
+(cl-defmacro esh-tf--for-app (app-names &rest body &key (at-least 0) &allow-other-keys)
+  (declare (indent defun))
+  (cl-remf body :at-least)
+  (let ((app-names (if (not (listp app-names)) (list app-names) app-names)))
+    `(if (and (> (length (oref command :script-parts)) ,at-least)
+              (member (car (oref command :script-parts)) ',app-names))
+         ,@body
+       nil)))
+
+(cl-defmacro esh-tf--sudo-support (func)
+  (declare (indent defun))
+  `(lambda (command)
+     (let ((fn ,func))
+       (if (not (string-prefix-p "sudo " (oref command :script)))
+           (funcall fn command)
+         (let ((result
+                (funcall
+                 fn
+                 (esh-tf-update command
+                                :script
+                                (substring (oref command :script) 5)))))
+           (cond ((stringp result)
+                  (format "sudo %s" result))
+                 ((listp result)
+                  (mapcar (lambda (x) (format "sudo %s" x)) result))
+                 (t result)))))))
+
 ;; TODO: implement alias expansion
 ;; (defun esh-tf--expand-aliases (script)
 ;;   (let ((aliases eshell-command-aliases-list))
@@ -139,5 +169,6 @@
 ;;               (let ((def cadr cell))
 ;;                 (when string-match-p "\\$\\(?:[[:digit:]]\\|\\*\\)"
 ;;                       ))))))
+
 
 (provide 'esh-tf-utils)
