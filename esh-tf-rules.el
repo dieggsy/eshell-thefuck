@@ -271,12 +271,16 @@
    (lambda (command)
      (let ((script (oref command :script)))
        (cond ((string-match-p "&&" script)
-              (format "sudo sh -c \"%s\"" (cl-remove-if
-                                           (lambda (part)
-                                             (string= part "sudo"))
-                                           (oref command :script-parts))))
+              (format "sudo sh -c \"%s\""
+                      (esh-tf--escape-quotes
+                       (string-join (cl-remove-if
+                                     (lambda (part)
+                                       (string= part "sudo"))
+                                     (oref command :script-parts))
+                                    " "))))
              ((string-match-p ">" script)
-              (format "sudo sh -c \"%s\"" (replace-regexp-in-string "\"" "\\\\\"" "\"hello\"")))
+              (format "sudo sh -c \"%s\""
+                      (esh-tf--escape-quotes (oref command :script-parts))))
              (t (format "sudo %s" script)))))
    :enabled t))
 
