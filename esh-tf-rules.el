@@ -179,6 +179,55 @@
    (lambda (command)
      (replace-regexp-in-string "^cp" "cp -a" (oref command :script)))
    :enabled t))
+
+(defun esh-tf--is-tar-extract (cmd)
+  (or (string-match-p "--extract" cmd)
+      (let ((split-cmd (split-string cmd " " 'omit-nulls)))
+        (and (> (length split-cmd) 1) (string-match-p "x" (cadr split-cmd))))))
+
+(defvar esh-tf--tar-extensions '(".tar" ".tar.Z" ".tar.bz2" ".tar.gz" ".tar.lz"
+                                 ".tar.lzma" ".tar.xz" ".taz" ".tb2" ".tbz" ".tbz2"
+                                 ".tgz" ".tlz" ".txz" ".tz"))
+
+(defun esh-tf--tar-file (cmd)
+  (let ((c (cl-find-if
+            (lambda (c)
+              (cl-find-if
+               (lambda (suf)
+                 (string-suffix-p suf c))
+               esh-tf--tar-extensions))
+            cmd)))
+    (when c
+      (list c (car (split-string c "\\." 'omit-nulls))))))
+
+(defvar esh-tf--rule-dirty-untar
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((script (oref command :script)))
+       (and (not (string-match-p "-C" script))
+            (esh-tf--is-tar-extract script)
+            (esh-tf--tar-file (oref command :script-parts)))))
+   :get-new-command
+   (lambda (command)
+     (let ((dir (eshell-quote-argument (cadr (esh-tf--tar-file
+                                              (oref command :script-parts))))))
+       (format "mkdir -p %s && %s -C %s" dir (oref command :script) dir)))
+   :side-effect
+   (lambda (old-cmd command)
+     (let ((tar-files
+            (split-string
+             (shell-command-to-string
+              (concat "tar -tf " (car (esh-tf--tar-file
+                                       (oref old-cmd :script-parts)))))
+             "\n"
+             'omit-nulls)))
+       (message "FILES: %S" tar-files)
+       (cl-loop for file in tar-files
+                do (ignore-errors
+                     (delete-file file)))))
+   :enabled t))
+
 (defvar esh-tf--rule-sudo
   (esh-tf-rule
    :match
