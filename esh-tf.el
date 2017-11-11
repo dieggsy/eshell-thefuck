@@ -55,13 +55,11 @@ erase call to `eshell/fuck'."
                  :documentation "Parts of command."))
   :documentation "Command that should be fixed")
 
-(cl-defmethod esh-tf-script-parts ((command esh-tf-command))
-  (when (not (oref command :script-parts))
-    (condition-case err
-        (oset command :script-parts (split-string (oref command :script)))
-      (warn "Can't split command because: %s"
-            (error-message-string err)))
-    (oref command :script-parts)))
+(cl-defmethod initialize-instance :after ((command esh-tf-command) &rest args)
+  (oset command :script (string-trim (oref command :script)))
+  (oset command :script-parts (split-string (oref command :script)
+                                            nil
+                                            'omit-nulls)))
 
 (defclass esh-tf-rule ()
   ((match :initarg :match
@@ -188,9 +186,7 @@ erase call to `eshell/fuck'."
                                  (point)
                                  (line-end-position))))
          ;; (rules (esh-tf--get-rules))
-         (command (esh-tf-command :script (string-trim input)
-                                  :script-parts (split-string input)
-                                  :output out))
+         (command (esh-tf-command :script input :output out))
          (corrected-commands (esh-tf--get-corrected-commands command)))
     (if corrected-commands
         (progn
