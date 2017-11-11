@@ -61,6 +61,11 @@ erase call to `eshell/fuck'."
                                             nil
                                             'omit-nulls)))
 
+(cl-defmethod esh-tf-update ((command esh-tf-command)
+                             &key (script (oref command :script))
+                             (output (oref command :output)))
+  (esh-tf-command :script script :output output))
+
 (defclass esh-tf-rule ()
   ((match :initarg :match
           :initform ignore
