@@ -38,9 +38,6 @@ erase call to `eshell/fuck'."
 ;;   :group 'esh-tf
 ;;   :type 'boolean)
 
-
-
-
 (defclass esh-tf-command ()
   ((script :initarg :script
            :initform ""
@@ -130,51 +127,98 @@ erase call to `eshell/fuck'."
 ;;   (if esh-tf-repeat
 ;;       (eshell)))
 
-(cl-defmethod esh-tf-run ((corrected esh-tf-corrected-command) old-cmd)
-  (when (oref corrected :side-effect)
-    (funcall (oref corrected :side-effect) old-cmd  (oref corrected :script)))
-  (when esh-tf-alter-history
-    ;;TODO implement alter_history
-    )
-  (insert-before-markers "\n")
-  (eshell-do-eval (eshell-parse-command (oref corrected :script)) t)
-  ;; (save-excursion
-  ;;   (eshell-bol)
-  ;;   (unless (eobp)
-  ;;     (kill-line)))
-  )
+(defvar-local esh-tf--old-command nil)
 
-(defun esh-tf--selector (commands)
-  (let (event
-        selected
-        (ind 0)
-        (echo-keystrokes 0))
-    (while (not (or (eq event 'return)
-                    (eq event 3)))
-      (cond ((eq event 'down)
-             (setq ind (if (= (1- (length commands)) ind) 0 (1+ ind))))
-            ((eq event 'up)
-             (setq ind (if (= 0 ind) (1- (length commands)) (1- ind)))))
-      (beginning-of-line)
-      (unless (eobp)
-        (kill-line))
-      (insert-before-markers
-       (oref (nth ind commands) :script)
-       " "
-       "["
-       (propertize "enter" 'face 'esh-tf-enter-face)
-       (if (< 1 (length commands))
-           (concat "/"
-                   (propertize "↑" 'face 'esh-tf-up-down-face)
-                   "/"
-                   (propertize "↓" 'face 'esh-tf-up-down-face))
-         "")
-       "/"
-       (propertize "C-c" 'face 'esh-tf-c-c-face)
-       "]")
-      (setq event (read-event)))
-    (when (eq event 'return)
-      (nth ind commands))))
+(defvar-local esh-tf--buffer-commands nil)
+
+(defvar-local esh-tf--command-ind nil)
+
+(defvar esh-tf-active-map (let ((map (make-sparse-keymap)))
+                            (define-key map [up] 'esh-tf--selector-prev)
+                            (define-key map [down] 'esh-tf--selector-next)
+                            (define-key map [return] 'esh-tf--selector-select)
+                            (define-key map (kbd "C-c") 'eshell-interrupt-process)
+                            map))
+
+(defun esh-tf--insert-prompt ()
+  (insert
+   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   " "
+   "["
+   (propertize "enter" 'face 'esh-tf-enter-face)
+   (if (< 1 (length esh-tf--buffer-commands))
+       (concat "/"
+               (propertize "↑" 'face 'esh-tf-up-down-face)
+               "/"
+               (propertize "↓" 'face 'esh-tf-up-down-face))
+     "")
+   "/"
+   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   "]"))
+
+(defun esh-tf--selector ()
+  (esh-tf--insert-prompt)
+  (ignore
+   (set-transient-map esh-tf-active-map
+                      t
+                      (lambda ()
+                        (eshell-bol)
+                        (kill-line)))))
+
+(defun esh-tf--selector-prev ()
+  (interactive)
+  (setq esh-tf--command-ind
+        (if (= esh-tf--command-ind 0)
+            (1- (length esh-tf--buffer-commands))
+          (1- esh-tf--command-ind)))
+  (eshell-bol)
+  (kill-line)
+  (insert
+   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   " "
+   "["
+   (propertize "enter" 'face 'esh-tf-enter-face)
+   (if (< 1 (length esh-tf--buffer-commands))
+       (concat "/"
+               (propertize "↑" 'face 'esh-tf-up-down-face)
+               "/"
+               (propertize "↓" 'face 'esh-tf-up-down-face))
+     "")
+   "/"
+   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   "]"))
+
+(defun esh-tf--selector-next ()
+  (interactive)
+  (setq esh-tf--command-ind
+        (if (= esh-tf--command-ind (1- (length esh-tf--buffer-commands)))
+            0
+          (1+ esh-tf--command-ind)))
+  (eshell-bol)
+  (kill-line)
+  (insert
+   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   " "
+   "["
+   (propertize "enter" 'face 'esh-tf-enter-face)
+   (if (< 1 (length esh-tf--buffer-commands))
+       (concat "/"
+               (propertize "↑" 'face 'esh-tf-up-down-face)
+               "/"
+               (propertize "↓" 'face 'esh-tf-up-down-face))
+     "")
+   "/"
+   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   "]"))
+
+(defun esh-tf--selector-select ()
+  (interactive)
+  (let ((corrected (nth esh-tf--command-ind esh-tf--buffer-commands)))
+    (when (oref corrected :side-effect)
+      (funcall (oref corrected :side-effect))))
+  (search-backward " ")
+  (kill-line)
+  (eshell-send-input))
 
 ;;;###autoload
 (defun eshell/fuck ()
@@ -196,9 +240,14 @@ erase call to `eshell/fuck'."
          (corrected-commands (esh-tf--get-corrected-commands command)))
     (if corrected-commands
         (progn
-          (let ((selected-command (esh-tf--selector corrected-commands)))
-            (when selected-command
-              (esh-tf-run selected-command command))))
+          (setq esh-tf--old-command command
+                esh-tf--buffer-commands corrected-commands
+                esh-tf--command-ind 0)
+          (when esh-tf-alter-buffer
+            (eshell-next-prompt -2)
+            (let ((inhibit-read-only t))
+              (delete-region (line-beginning-position) (point-max))))
+          (esh-tf--selector))
       (message "No fucks given!"))))
 
 (provide 'esh-tf)

@@ -3,8 +3,9 @@ This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][th
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
-** Todo [0/5]
-*** TODO [#A] UI improvement
+** Todo [2/7]
+*** DONE [#A] UI improvement
+CLOSED: [2017-11-12 Sun 14:06]
 Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
 swallow every key here. We also don't /need/ to since we don't have the same UI
 limitations of a terminal emulator. We could probably just move the prompt to
@@ -294,6 +295,7 @@ Fixes package name with ~pacman~ or ~yaourt~.
 *** TODO [#C] Implement alter-history
 This would replace the incorrect command with the corrected one in
 ~eshell-history-ring~.
-*** TODO [#C] Implement alter-buffer
+*** DONE [#C] Implement alter-buffer
+CLOSED: [2017-11-12 Sun 14:24]
 After running command, everything from incorrect command on would be erased,
 and replaced with correct command and output.
