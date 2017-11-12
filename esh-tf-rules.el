@@ -352,4 +352,70 @@
    :priority 900
    :enabled t))
 
+(defun esh-tf--get-pkgfile (parts)
+  (let* ((cmd (if (string= (car parts) "sudo") (cadr parts) (car parts)))
+         (packages (split-string
+                    (shell-command-to-string (concat "pkgfile -b " cmd))
+                    "\n"
+                    'omit-nulls)))
+    packages))
+
+(defvar esh-tf--rule-pacman
+  ;; TODO: this conflicts with pacman-not-found, example: sudo pacman -S llc
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (and (string-match-p "command not found" (oref command :output))
+          (esh-tf--get-pkgfile (oref command :script-parts))))
+   :get-new-command
+   (lambda (command)
+     (let ((script (oref command :script))
+           (packages (esh-tf--get-pkgfile (oref command :script-parts)))
+           (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
+       (mapcar (lambda (package)
+                 (format "%s -S %s && %s" pacman package script))
+               packages)))
+   :enabled (and (executable-find "pkgfile")
+                 (executable-find "pacman"))))
+
+(defvar esh-tf--rule-pacman-not-found
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (let ((script-parts (oref command :script-parts)))
+       (and (or (member (car script-parts) '("pacman" "yaourt"))
+                (and (>= (length script-parts) 2)
+                     (equal (cl-subseq script-parts 0 2) '("sudo" "pacman"))))
+            (string-match-p "error: target not found:" (oref command :output)))))
+   :get-new-command
+   (lambda (command)
+     (let ((pgr (car (last (oref command :script-parts)))))
+       (esh-tf--replace-command command pgr (esh-tf--get-pkgfile `(,pgr)))))
+   :enabled (and (executable-find "pkgfile")
+                 (executable-find "pacman"))))
+
+(defvar esh-tf--rule-rm-dir
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (and (member "rm" (oref command :script-parts))
+          (string-match-p "is a directory" (downcase (oref command :output)))))
+   :get-new-command
+   (lambda (command)
+     (let* ((script (oref command :script))
+            (arguments (if (string-match-p "hdfs" script) "-r" "-rf")))
+       (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
+                                 (concat "rm " arguments " \\1")
+                                 script)))
+   :enabled t))
+
+(defvar esh-tf--rule-sl-ls
+  (esh-tf-rule
+   :match
+   (lambda (command)
+     (string= (oref command :script) "sl"))
+   :get-new-command
+   (lambda (command)
+     "ls")
+   :enabled t))
 

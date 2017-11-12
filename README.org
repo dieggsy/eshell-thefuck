@@ -1,20 +1,22 @@
 * eshell-thefuck
 This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It's still very much a work
-in progress (see te todo list below), but if you like the idea, testing or
+in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
-** Todo [0/3]
+** Todo [0/4]
 *** TODO [#A] UI improvement
 Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
 swallow every key here. We also don't /need/ to since we don't have the same UI
 limitations of a terminal emulator. We could probably just move the prompt to
 eshell's next prompt and add a sparse keymap there for up/down/RET/C-c.
+*** TODO [#B] Alias expansion
+Both for eshell and git (look into git_support equivalent)
 *** TODO [#B] More "generic" rules
 E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just if
 it starts with cd. This involves both ~esh-tf--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO [#C] Rule coverage [0/2]
-**** TODO Default [13/116]
+**** TODO Default [15/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -214,13 +216,15 @@ Replaces not found path with similar absolute path from history
 Fixes unrecognized ~react-native~ commands
 ***** TODO ~remove_trailing_cedilla~
 Remove trailling cedillas ~ç~, a common typo for european keyboard layouts
-***** TODO ~rm_dir~
+***** DONE ~rm_dir~
+CLOSED: [2017-11-11 Sat 18:15]
 Adds ~-rf~ when you trying to remove directory
 ***** TODO ~scm_correction~
 Corrects wrong scm like ~hg log~ to ~git log~
 ***** TODO ~sed_unterminated_s~
 Adds missing '/' to ~sed~'s ~s~ commands
-***** TODO ~sl_ls~
+***** DONE ~sl_ls~
+CLOSED: [2017-11-11 Sat 18:24]
 Changes ~sl~ to ~ls~
 ***** TODO ~ssh_known_hosts~
 Removes host from ~known_hosts~ on warning
@@ -260,7 +264,7 @@ Fixes misspelled ~yarn~ commands
 Fixes replaced ~yarn~ commands
 ***** TODO ~yarn_help~
 Makes it easier to open ~yarn~ documentation
-**** TODO Specific platform [0/12]
+**** TODO Specific platform [2/12]
 ***** TODO ~apt_get~
 Installs app from apt if it not installed (requires ~python-commandnotfound~ / ~python3-commandnotfound~)
 ***** TODO ~apt_get_search~
@@ -281,7 +285,9 @@ Fixes wrong brew commands, for example ~brew docto/brew doctor~
 Turns ~brew update <formula>~ into ~brew upgrade <formula>~
 ***** TODO ~dnf_no_such_command~
 Fixes mistyped DNF commands
-***** TODO ~pacman~
+***** DONE ~pacman~
+CLOSED: [2017-11-11 Sat 17:53]
 Installs app with ~pacman~ if it is not installed (uses ~yaourt~ if available)
-***** TODO ~pacman_not_found~
+***** DONE ~pacman_not_found~
+CLOSED: [2017-11-11 Sat 18:10]
 Fixes package name with ~pacman~ or ~yaourt~.
