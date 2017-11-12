@@ -17,7 +17,7 @@
          (not (member (car (split-string line " ")) executables))))
       not-corrected))))
 
-(defvar esh-tf--rule-no-command
+(defvar esh-tf-rule-no-command
   (esh-tf-rule
    :match
    (esh-tf--sudo-support
@@ -52,7 +52,7 @@
    :priority 3000
    :enabled t))
 
-(defvar esh-tf--rule-git-not-command
+(defvar esh-tf-rule-git-not-command
   (esh-tf-rule
    :match
    (lambda (command)
@@ -76,7 +76,7 @@
        (esh-tf--replace-command command broken-cmd matched)))
    :enabled t))
 
-(defvar esh-tf--rule-cd-correction
+(defvar esh-tf-rule-cd-correction
   ;; TODO: this should be able to replace cd anywhere in the command.
   ;; TODO: looks like there's too many string-match-p's, pretty sure this
   ;; should be fixed to one for eshell
@@ -128,7 +128,7 @@
        (format "cd \"%s\"" cwd)))
    :enabled t))
 
-(defvar esh-tf--rule-cd-mkdir
+(defvar esh-tf-rule-cd-mkdir
   ;; TODO: this should be able to replace cd anywhere in the command.
   ;; TODO: looks like there's too many string-match-p's, pretty sure this
   ;; should be fixed to one for eshell
@@ -148,7 +148,7 @@
                                (oref command :script)))
    :enabled t))
 
-(defvar esh-tf--rule-cd-parent
+(defvar esh-tf-rule-cd-parent
   (esh-tf-rule
    :match
    (lambda (command)
@@ -158,7 +158,7 @@
      "cd ..")
    :enabled t))
 
-(defvar esh-tf--rule-chmod-x
+(defvar esh-tf-rule-chmod-x
   (esh-tf-rule
    :match
    (lambda (command)
@@ -174,7 +174,7 @@
              (oref command :script)))
    :enabled t))
 
-(defvar esh-tf--rule-cp-omitting-directory
+(defvar esh-tf-rule-cp-omitting-directory
   ;; TODO: Should be able to replace cp anywhere in command
   (esh-tf-rule
    :match
@@ -212,7 +212,7 @@
     (when c
       (list c (car (split-string c "\\." 'omit-nulls))))))
 
-(defvar esh-tf--rule-dirty-untar
+(defvar esh-tf-rule-dirty-untar
   (esh-tf-rule
    :match
    (lambda (command)
@@ -241,7 +241,7 @@
                      (delete-file file)))))
    :enabled t))
 
-(defvar esh-tf--rule-sudo
+(defvar esh-tf-rule-sudo
   (esh-tf-rule
    :match
    (lambda (command)
@@ -297,7 +297,7 @@
              (t (format "sudo %s" script)))))
    :enabled t))
 
-(defvar esh-tf--rule-ls-all
+(defvar esh-tf-rule-ls-all
   (esh-tf-rule
    :match
    (lambda (command)
@@ -308,7 +308,7 @@
      (string-join (append '("ls" "-a") (cdr (oref command :script-parts))) " "))
    :enabled t))
 
-(defvar esh-tf--rule-mkdir-p
+(defvar esh-tf-rule-mkdir-p
   (esh-tf-rule
    :match
    (esh-tf--sudo-support
@@ -324,7 +324,7 @@
                                  (oref command :script))))
    :enabled t))
 
-(defvar esh-tf--rule-touch
+(defvar esh-tf-rule-touch
   (esh-tf-rule
    :match
    (lambda (command)
@@ -339,7 +339,7 @@
        (format "mkdir -p %s && %s" path (oref command :script))))
    :enabled t))
 
-(defvar esh-tf--rule-dry
+(defvar esh-tf-rule-dry
   (esh-tf-rule
    :match
    (lambda (command)
@@ -360,7 +360,7 @@
                     'omit-nulls)))
     packages))
 
-(defvar esh-tf--rule-pacman
+(defvar esh-tf-rule-pacman
   ;; TODO: this conflicts with pacman-not-found, example: sudo pacman -S llc
   (esh-tf-rule
    :match
@@ -378,7 +378,7 @@
    :enabled (and (executable-find "pkgfile")
                  (executable-find "pacman"))))
 
-(defvar esh-tf--rule-pacman-not-found
+(defvar esh-tf-rule-pacman-not-found
   (esh-tf-rule
    :match
    (lambda (command)
@@ -394,7 +394,7 @@
    :enabled (and (executable-find "pkgfile")
                  (executable-find "pacman"))))
 
-(defvar esh-tf--rule-rm-dir
+(defvar esh-tf-rule-rm-dir
   (esh-tf-rule
    :match
    (lambda (command)
@@ -409,7 +409,7 @@
                                  script)))
    :enabled t))
 
-(defvar esh-tf--rule-sl-ls
+(defvar esh-tf-rule-sl-ls
   (esh-tf-rule
    :match
    (lambda (command)

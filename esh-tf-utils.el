@@ -61,7 +61,7 @@
        (let ((name (symbol-name var)))
          (when (and (or (get var 'variable-documentation)
                         (and (boundp var) (not (keywordp var))))
-                    (string-prefix-p "esh-tf--rule-" name)
+                    (string-prefix-p "esh-tf-rule-" name)
                     (esh-tf-rule-p (symbol-value var))
                     (oref (symbol-value var) :enabled))
            (push (symbol-value var) cands)))))
