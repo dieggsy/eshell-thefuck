@@ -77,7 +77,7 @@ erase call to `eshell/fuck'."
                     :documentation "Function that gets the new command for current command.")
    (enabled :initarg :enabled
             :initform nil
-            :type boolean
+            :type t
             :documentation "Whether rule is enabled.")
    (side-effect :initarg :side-effect
                 :initform ignore
