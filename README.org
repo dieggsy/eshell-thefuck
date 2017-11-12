@@ -3,7 +3,7 @@ This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][th
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
-** Todo [0/4]
+** Todo [0/5]
 *** TODO [#A] UI improvement
 Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
 swallow every key here. We also don't /need/ to since we don't have the same UI
@@ -291,3 +291,9 @@ Installs app with ~pacman~ if it is not installed (uses ~yaourt~ if available)
 ***** DONE ~pacman_not_found~
 CLOSED: [2017-11-11 Sat 18:10]
 Fixes package name with ~pacman~ or ~yaourt~.
+*** TODO [#C] Implement alter-history
+This would replace the incorrect command with the corrected one in
+~eshell-history-ring~.
+*** TODO [#C] Implement alter-buffer
+After running command, everything from incorrect command on would be erased,
+and replaced with correct command and output.

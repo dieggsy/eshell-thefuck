@@ -30,6 +30,7 @@ erase call to `eshell/fuck'."
 (defface esh-tf-c-c-face '((t (:foreground "#FB4933")))
   "Face used for C-c"
   :group 'esh-tf)
+
 ;; TODO: implement repetition
 ;; (defcustom esh-tf-repeat nil
 ;;   "Whether to attempt running command a second time if it fails after
