@@ -24,7 +24,7 @@
      (lambda (command)
        (let ((cmd (car (oref command :script-parts))))
          (and (not (esh-tf--which cmd))
-              (string-match-p "not found" (oref command :output))
+              (string-match-p "command not found" (oref command :output))
               (difflib-get-close-matches cmd (esh-tf--get-all-executables))
               t))))
    :get-new-command
