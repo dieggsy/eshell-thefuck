@@ -64,49 +64,6 @@ erase call to `eshell/fuck'."
                              (output (oref command :output)))
   (esh-tf-command :script script :output output))
 
-(defclass esh-tf-rule ()
-  ((match :initarg :match
-          :initform ignore
-          :type function
-          :docuemntation "Function that determines whether command matches.")
-   (get-new-command :initarg :get-new-command
-                    :initform ignore
-                    :type function
-                    :documentation "Function that gets the new command for current command.")
-   (enabled :initarg :enabled
-            :initform nil
-            :type t
-            :documentation "Whether rule is enabled.")
-   (side-effect :initarg :side-effect
-                :initform ignore
-                :type function
-                :documentation "Side effect function.")
-   (priority :initarg :priority
-             :initform 0
-             :type integer
-             :documentation "Rule priority.")
-   (requires-output :initarg :requires-output
-                    :initform nil
-                    :type boolean
-                    :documentation "Whether rule requires output."))
-  :documentation "Initializes rule with given fields.")
-
-(cl-defmethod esh-tf-is-match ((rule esh-tf-rule) command)
-  (if (and (string-empty-p (oref command :output)) (oref rule :requires-output))
-      nil
-    (funcall (oref rule :match) command)))
-
-(cl-defmethod esh-tf-get-corrected-commands ((rule esh-tf-rule) command)
-  (let ((new-commands (funcall (oref rule :get-new-command) command)))
-    (when (not (listp new-commands))
-      (setq new-commands (list new-commands)))
-    (cl-loop for new-command in new-commands
-             as n = 0 then (1+ n)
-             collect (esh-tf-corrected-command
-                      :script new-command
-                      :side-effect (oref rule :side-effect)
-                      :priority (* (oref rule :priority) (1+ n))))))
-
 (defclass esh-tf-corrected-command ()
   ((script :initarg :script
            :initform ""
