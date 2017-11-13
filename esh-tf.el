@@ -1,35 +1,76 @@
+;;; esh-tf.el --- Correct the previous eshell command. -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2017 Diego A. Mundo
+;; Author: Diego A. Mundo <diegoamundo@gmail.com>
+;; URL: http://github.com/dieggsy/esh-tf
+;; Git-Repository: git://github.com/dieggsy/esh-tf
+;; Created: 2017-11-01
+;; Version: 0.1.0
+;; Keywords:
+;; Package-Requires: ((emacs "25"))
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This is a loose port of https://github.com/nvbn/thefuck for eshell.
+
+;;; Code:
 (require 'cl-lib)
-(require 'esh-tf-utils)
 (require 'difflib)
+(require 'eshell)
+(require 'em-prompt)
+
+;;* Customization
+(defgroup esh-tf nil
+  "Correct the previous eshell command."
+  :group 'eshell)
+
+(defgroup esh-tf-faces nil
+  "Faces for esh-tf"
+  :group 'esh-tf)
 
 (defcustom esh-tf-include-lisp-commands nil
-  "If t, include all known lisp funcions in known commands."
+  "If t, include all known emacs-lisp functions in known commands."
   :group 'esh-tf
   :type 'boolean)
 
 (defcustom esh-tf-alter-history nil
-  "If t, replace incorrect command with corrected one in
-`eshell-history-ring'."
+  "Replace incorrect command with corrected one in `eshell-history-ring'."
   :group 'esh-tf
   :type 'boolean)
 
 (defcustom esh-tf-alter-buffer nil
-  "If t, directly replace incorrect command with correct one, and
-erase call to `eshell/fuck'."
+  "Directly replace incorrect command with correct one in eshell buffer.
+
+Also erases call to `eshell/fuck'."
   :group 'esh-tf
   :type 'boolean)
 
 (defface esh-tf-enter-face '((t (:foreground "#B8BB26")))
   "Face used for enter."
-  :group 'esh-tf)
+  :group 'esh-tf-faces)
 
 (defface esh-tf-up-down-face '((t (:foreground "#83A598")))
   "Face used for up/down."
-  :group 'esh-tf)
+  :group 'esh-tf-faces)
 
 (defface esh-tf-c-c-face '((t (:foreground "#FB4933")))
   "Face used for C-c"
-  :group 'esh-tf)
+  :group 'esh-tf-faces)
 
 ;; TODO: implement repetition
 ;; (defcustom esh-tf-repeat nil
@@ -38,6 +79,8 @@ erase call to `eshell/fuck'."
 ;;   :group 'esh-tf
 ;;   :type 'boolean)
 
+;;* Types
+;;** Command
 (defclass esh-tf-command ()
   ((script :initarg :script
            :initform ""
@@ -51,9 +94,9 @@ erase call to `eshell/fuck'."
                  :initform nil
                  :type list
                  :documentation "Parts of command."))
-  :documentation "Command that should be fixed")
+  "Command that should be fixed")
 
-(cl-defmethod initialize-instance :after ((command esh-tf-command) &rest args)
+(cl-defmethod initialize-instance :after ((command esh-tf-command) &rest _args)
   (oset command :script (string-trim (oref command :script)))
   (oset command :script-parts (split-string (oref command :script)
                                             nil
@@ -64,6 +107,7 @@ erase call to `eshell/fuck'."
                              (output (oref command :output)))
   (esh-tf-command :script script :output output))
 
+;;** Corrected command
 (defclass esh-tf-corrected-command ()
   ((script :initarg :script
            :initform ""
@@ -77,7 +121,7 @@ erase call to `eshell/fuck'."
              :initform 0
              :type integer
              :documentation "New command priority."))
-  :documentation "Corrected by rule command.")
+  "Corrected by rule command.")
 
 ;; TODO: implement repetition
 ;; (cl-defmethod esh-tf--get-script ((corrected esh-tf-corrected-command))
@@ -746,6 +790,11 @@ erase call to `eshell/fuck'."
                             map))
 
 (defun esh-tf--insert-prompt ()
+  "Insert prompt for current corrected command.
+
+Command is taken from index `esh-tf--comand-ind' in
+buffer-local-variable `esh-tf--buffer-commands'."
+
   (insert
    (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
    " "
@@ -762,6 +811,7 @@ erase call to `eshell/fuck'."
    "]"))
 
 (defun esh-tf--selector ()
+  "Initialize corected command selector and transient map."
   (esh-tf--insert-prompt)
   (ignore
    (set-transient-map esh-tf-active-map
@@ -771,6 +821,7 @@ erase call to `eshell/fuck'."
                         (kill-line)))))
 
 (defun esh-tf--selector-prev ()
+  "Display previous corrected command."
   (interactive)
   (setq esh-tf--command-ind
         (if (= esh-tf--command-ind 0)
@@ -794,6 +845,7 @@ erase call to `eshell/fuck'."
    "]"))
 
 (defun esh-tf--selector-next ()
+  "Display next corrected command."
   (interactive)
   (setq esh-tf--command-ind
         (if (= esh-tf--command-ind (1- (length esh-tf--buffer-commands)))
@@ -817,6 +869,7 @@ erase call to `eshell/fuck'."
    "]"))
 
 (defun esh-tf--selector-select ()
+  "Run currently displayed corrected command."
   (interactive)
   (let ((corrected (nth esh-tf--command-ind esh-tf--buffer-commands)))
     (when (oref corrected :side-effect)
@@ -825,8 +878,10 @@ erase call to `eshell/fuck'."
   (kill-line)
   (eshell-send-input))
 
+;;* User
 ;;;###autoload
 (defun eshell/fuck ()
+  "Correct previous eshell command."
   (let* ((debug-on-error t)
          (out-start (save-excursion (eshell-next-prompt -2)
                                     (forward-line)
@@ -840,7 +895,6 @@ erase call to `eshell/fuck'."
                                 (buffer-substring-no-properties
                                  (point)
                                  (line-end-position))))
-         ;; (rules (esh-tf--get-rules))
          (command (esh-tf-command :script input :output out))
          (corrected-commands (esh-tf--get-corrected-commands command)))
     (if corrected-commands
@@ -856,3 +910,4 @@ erase call to `eshell/fuck'."
       (message "No fucks given!"))))
 
 (provide 'esh-tf)
+;;; esh-tf.el ends here

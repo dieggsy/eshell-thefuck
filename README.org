@@ -3,20 +3,20 @@ This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][th
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
-** Todo [2/7]
-*** DONE [#A] UI improvement
+** Todo [2/8]
+*** DONE UI improvement
 CLOSED: [2017-11-12 Sun 14:06]
 Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
 swallow every key here. We also don't /need/ to since we don't have the same UI
 limitations of a terminal emulator. We could probably just move the prompt to
 eshell's next prompt and add a sparse keymap there for up/down/RET/C-c.
-*** TODO [#B] Alias expansion
+*** TODO Alias expansion
 Both for eshell and git (look into git_support equivalent)
-*** TODO [#B] More "generic" rules
+*** TODO More "generic" rules
 E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just if
 it starts with cd. This involves both ~esh-tf--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
-*** TODO [#C] Rule coverage [0/2]
+*** TODO Rule coverage [0/2]
 **** TODO Default [15/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
@@ -292,10 +292,15 @@ Installs app with ~pacman~ if it is not installed (uses ~yaourt~ if available)
 ***** DONE ~pacman_not_found~
 CLOSED: [2017-11-11 Sat 18:10]
 Fixes package name with ~pacman~ or ~yaourt~.
-*** TODO [#C] Implement alter-history
+*** TODO Consider prompting for/getting rid of :side-effect
+I don't like the idea of code the user may be unaware of running implicitly in
+the background, esp. if this can be achieved with just a slightly longer (and
+perhaps more ugly) shell command.
+*** TODO Implement alter-history
 This would replace the incorrect command with the corrected one in
 ~eshell-history-ring~.
-*** DONE [#C] Implement alter-buffer
+*** TODO When getting last command, skip calls to eshell/fuck and fuck.
+*** DONE Implement alter-buffer
 CLOSED: [2017-11-12 Sun 14:24]
 After running command, everything from incorrect command on would be erased,
 and replaced with correct command and output.
