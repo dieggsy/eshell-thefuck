@@ -101,11 +101,11 @@
     (insert string)
     (if count
         (while (/= 0 count)
-          (beginning-of-buffer)
+          (goto-char (point-min))
           (and (search-forward-regexp regexp nil 'noerror)
                (replace-match rep))
           (setq count (1- count)))
-      (beginning-of-buffer)
+      (goto-char (point-min))
       (while (search-forward-regexp regexp nil 'noerror)
         (replace-match rep)))
     (buffer-string)))
