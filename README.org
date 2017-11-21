@@ -9,7 +9,7 @@ contributions are most welcome!
 Both for eshell and git (look into git_support equivalent)
 *** TODO More "generic" rules
 E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just if
-it starts with cd. This involves both ~esh-tf--for-app~ and the actual new
+it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
 **** TODO Default [15/116]
@@ -21,26 +21,26 @@ Fixes misspelled commands like ~aws dynamdb scan~
 Runs ~cargo build~ instead of ~cargo~
 ***** TODO ~cargo_no_command~
 Fixes wrongs commands like ~cargo buid~
-***** DONE [[file:esh-tf.el::esh-tf-rule-cd-correction][cd-correction]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-cd-correction][cd-correction]]
 CLOSED: [2017-11-10 Fri 21:46]
 Spellchecks and correct failed cd commands
-***** DONE [[file:esh-tf.el::esh-tf-rule-cd-mkdir][cd-mkdir]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-cd-mkdir][cd-mkdir]]
 CLOSED: [2017-11-10 Fri 21:47]
 Creates directories before cd'ing into them
-***** DONE [[file:esh-tf.el::esh-tf-rule-cd-parent][cd-parent]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-cd-parent][cd-parent]]
 CLOSED: [2017-11-10 Fri 21:48]
 Changes ~cd..~ to ~cd ..~
-***** DONE [[file:esh-tf.el::esh-tf-rule-chmod-x][chmod-x]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-chmod-x][chmod-x]]
 CLOSED: [2017-11-10 Fri 21:48]
 Add execution bit
 ***** TODO ~composer_not_command~
 Fixes composer command name
-***** DONE [[file:esh-tf.el::esh-tf-rule-cp-omitting-directory][cp-omitting-directory]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-cp-omitting-directory][cp-omitting-directory]]
 CLOSED: [2017-11-10 Fri 21:48]
 Adds ~-a~ when you ~cp~ directory
 ***** TODO ~cpp11~
 Adds missing ~-std=c++11~ to ~g++~ or ~clang++~
-***** DONE [[file:esh-tf.el::esh-tf-rule-dirty-untar][dirty-untar]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-dirty-untar][dirty-untar]]
 CLOSED: [2017-11-10 Fri 21:51]
 Fixes ~tar x~ command that untarred in the current directory
 ***** TODO ~dirty_unzip~
@@ -86,7 +86,7 @@ Fixes ~git stash~ commands (misspelled subcommand and missing ~save~)
 Fixes ~fatal: bad flag '...' after filename~
 ***** TODO ~git_help_aliased~
 Fixes ~git help <alias>~ commands replacing <alias> with the aliased command
-***** DONE [[file:esh-tf.el::esh-tf-rule-git-not-command][git-not-command]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-git-not-command][git-not-command]]
 CLOSED: [2017-11-10 Fri 21:44]
 Fixes wrong git commands like ~git brnch~
 ***** TODO ~git_pull~
@@ -185,7 +185,7 @@ Fixes ~npm~ custom script name in ~npm run-script <script>~
 Adds missing ~run-script~ for custom ~npm~ scripts
 ***** TODO ~npm_wrong_command~
 Fixes wrong npm commands like ~npm urgrade~
-***** DONE [[file:esh-tf.el::esh-tf-rule-no-command][no-command]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-no-command][no-command]]
 CLOSED: [2017-11-10 Fri 21:37]
 Fixes wrong console commands, for example ~vom/vim~
 ***** TODO ~no_such_file~
@@ -224,7 +224,7 @@ CLOSED: [2017-11-11 Sat 18:24]
 Changes ~sl~ to ~ls~
 ***** TODO ~ssh_known_hosts~
 Removes host from ~known_hosts~ on warning
-***** DONE [[file:esh-tf.el::esh-tf-rule-sudo][sudo]]
+***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-sudo][sudo]]
 CLOSED: [2017-11-10 Fri 21:51]
 Prepends ~sudo~ to previous command if it failed because of permissions
 ***** TODO ~sudo_command_from_user_path~

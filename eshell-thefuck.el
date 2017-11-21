@@ -1,9 +1,9 @@
-;;; esh-tf.el --- Correct the previous eshell command. -*- lexical-binding: t; -*-
+;;; eshell-thefuck.el --- Correct the previous eshell command. -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 Diego A. Mundo
 ;; Author: Diego A. Mundo <diegoamundo@gmail.com>
-;; URL: http://github.com/dieggsy/esh-tf
-;; Git-Repository: git://github.com/dieggsy/esh-tf
+;; URL: http://github.com/dieggsy/eshell-thefuck
+;; Git-Repository: git://github.com/dieggsy/eshell-thefuck
 ;; Created: 2017-11-01
 ;; Version: 0.1.0
 ;; Keywords:
@@ -36,53 +36,53 @@
 (require 'eieio)
 
 ;;* Customization
-(defgroup esh-tf nil
+(defgroup eshell-thefuck nil
   "Correct the previous eshell command."
   :group 'eshell)
 
-(defgroup esh-tf-faces nil
-  "Faces for esh-tf"
-  :group 'esh-tf)
+(defgroup eshell-thefuck-faces nil
+  "Faces for eshell-thefuck"
+  :group 'eshell-thefuck)
 
-(defcustom esh-tf-include-lisp-commands nil
+(defcustom eshell-thefuck-include-lisp-commands nil
   "If t, include all known emacs-lisp functions in known commands."
-  :group 'esh-tf
+  :group 'eshell-thefuck
   :type 'boolean)
 
-(defcustom esh-tf-alter-history nil
+(defcustom eshell-thefuck-alter-history nil
   "Replace incorrect command with corrected one in `eshell-history-ring'."
-  :group 'esh-tf
+  :group 'eshell-thefuck
   :type 'boolean)
 
-(defcustom esh-tf-alter-buffer nil
+(defcustom eshell-thefuck-alter-buffer nil
   "Directly replace incorrect command with correct one in eshell buffer.
 
 Also erases call to `eshell/fuck'."
-  :group 'esh-tf
+  :group 'eshell-thefuck
   :type 'boolean)
 
-(defface esh-tf-enter-face '((t (:foreground "#B8BB26")))
+(defface eshell-thefuck-enter-face '((t (:foreground "#B8BB26")))
   "Face used for enter."
-  :group 'esh-tf-faces)
+  :group 'eshell-thefuck-faces)
 
-(defface esh-tf-up-down-face '((t (:foreground "#83A598")))
+(defface eshell-thefuck-up-down-face '((t (:foreground "#83A598")))
   "Face used for up/down."
-  :group 'esh-tf-faces)
+  :group 'eshell-thefuck-faces)
 
-(defface esh-tf-c-c-face '((t (:foreground "#FB4933")))
+(defface eshell-thefuck-c-c-face '((t (:foreground "#FB4933")))
   "Face used for C-c"
-  :group 'esh-tf-faces)
+  :group 'eshell-thefuck-faces)
 
 ;; TODO: implement repetition
-;; (defcustom esh-tf-repeat nil
+;; (defcustom eshell-thefuck-repeat nil
 ;;   "Whether to attempt running command a second time if it fails after
 ;; invocation of `eshell-fuck'"
-;;   :group 'esh-tf
+;;   :group 'eshell-thefuck
 ;;   :type 'boolean)
 
 ;;* Types
 ;;** Command
-(defclass esh-tf-command ()
+(defclass eshell-thefuck-command ()
   ((script :initarg :script
            :initform ""
            :type string
@@ -97,19 +97,19 @@ Also erases call to `eshell/fuck'."
                  :documentation "Parts of command."))
   "Command that should be fixed")
 
-(cl-defmethod initialize-instance :after ((command esh-tf-command) &rest _args)
+(cl-defmethod initialize-instance :after ((command eshell-thefuck-command) &rest _args)
   (oset command :script (string-trim (oref command :script)))
   (oset command :script-parts (split-string (oref command :script)
                                             nil
                                             'omit-nulls)))
 
-(cl-defmethod esh-tf-update ((command esh-tf-command)
+(cl-defmethod eshell-thefuck-update ((command eshell-thefuck-command)
                              &key (script (oref command :script))
                              (output (oref command :output)))
-  (esh-tf-command :script script :output output))
+  (eshell-thefuck-command :script script :output output))
 
 ;;** Corrected command
-(defclass esh-tf-corrected-command ()
+(defclass eshell-thefuck-corrected-command ()
   ((script :initarg :script
            :initform ""
            :type string
@@ -125,13 +125,13 @@ Also erases call to `eshell/fuck'."
   "Corrected by rule command.")
 
 ;; TODO: implement repetition
-;; (cl-defmethod esh-tf--get-script ((corrected esh-tf-corrected-command))
-;;   (if esh-tf-repeat
+;; (cl-defmethod eshell-thefuck--get-script ((corrected eshell-thefuck-corrected-command))
+;;   (if eshell-thefuck-repeat
 ;;       (eshell)))
 
 ;;** Rule
 
-(defclass esh-tf-rule ()
+(defclass eshell-thefuck-rule ()
   ((match :initarg :match
           :initform ignore
           :type function
@@ -154,24 +154,24 @@ Also erases call to `eshell/fuck'."
              :documentation "Rule priority."))
   "Initializes rule with given fields.")
 
-(cl-defmethod esh-tf-is-match ((rule esh-tf-rule) command)
+(cl-defmethod eshell-thefuck-is-match ((rule eshell-thefuck-rule) command)
   (if (and (string-empty-p (oref command :output)))
       nil
     (funcall (oref rule :match) command)))
 
-(cl-defmethod esh-tf-get-corrected-commands ((rule esh-tf-rule) command)
+(cl-defmethod eshell-thefuck-get-corrected-commands ((rule eshell-thefuck-rule) command)
   (let ((new-commands (funcall (oref rule :get-new-command) command)))
     (when (not (listp new-commands))
       (setq new-commands (list new-commands)))
     (cl-loop for new-command in new-commands
              as n = 0 then (1+ n)
-             collect (esh-tf-corrected-command
+             collect (eshell-thefuck-corrected-command
                       :script new-command
                       :side-effect (oref rule :side-effect)
                       :priority (* (oref rule :priority) (1+ n))))))
 
 ;;* Utils
-(defun esh-tf--get-all-executables ()
+(defun eshell-thefuck--get-all-executables ()
   (delete-dups
    (append
     (mapcar #'file-name-base
@@ -191,17 +191,17 @@ Also erases call to `eshell/fuck'."
        (lambda (x)
          (let ((name (symbol-name x)))
            (when (and (fboundp x)
-                      (or esh-tf-include-lisp-commands
+                      (or eshell-thefuck-include-lisp-commands
                           (string-prefix-p "eshell/" name)))
              (push (s-chop-prefix "eshell/" name) cands)))))
       cands))))
 
-(cl-defun esh-tf--get-closest (word possibilities &key (n 3) (cutoff 0.6) (fallback-to-first t))
+(cl-defun eshell-thefuck--get-closest (word possibilities &key (n 3) (cutoff 0.6) (fallback-to-first t))
   (or (car (difflib-get-close-matches word possibilities :n n :cutoff cutoff))
       (when fallback-to-first
         (car possibilities))))
 
-(defun esh-tf--which (name)
+(defun eshell-thefuck--which (name)
   (let (program
         alias
         direct)
@@ -224,34 +224,34 @@ Also erases call to `eshell/fuck'."
                 (eshell-search-path name)))))
     program))
 
-(defun esh-tf--get-rules ()
+(defun eshell-thefuck--get-rules ()
   (let (cands)
     (mapatoms
      (lambda (var)
        (let ((name (symbol-name var)))
          (when (and (or (get var 'variable-documentation)
                         (and (boundp var) (not (keywordp var))))
-                    (string-prefix-p "esh-tf-rule-" name)
-                    (esh-tf-rule-p (symbol-value var))
+                    (string-prefix-p "eshell-thefuck-rule-" name)
+                    (eshell-thefuck-rule-p (symbol-value var))
                     (oref (symbol-value var) :enabled))
            (push (symbol-value var) cands)))))
     cands))
 
-(defun esh-tf--organize-commands (corrected-commands)
+(defun eshell-thefuck--organize-commands (corrected-commands)
   (let ((no-dups (cl-remove-duplicates
                   corrected-commands
                   :key (lambda (x)
                          (oref x :script)))))
     (cl-sort no-dups #'< :key (lambda (x) (oref x :priority)))))
 
-(defun esh-tf--get-corrected-commands (command)
-  (let* ((rules (esh-tf--get-rules))
+(defun eshell-thefuck--get-corrected-commands (command)
+  (let* ((rules (eshell-thefuck--get-rules))
          (corrected (cl-loop for rule in rules
-                             if (esh-tf-is-match rule command)
-                             append (esh-tf-get-corrected-commands rule command))))
-    (esh-tf--organize-commands corrected)))
+                             if (eshell-thefuck-is-match rule command)
+                             append (eshell-thefuck-get-corrected-commands rule command))))
+    (eshell-thefuck--organize-commands corrected)))
 
-(cl-defun esh-tf--get-all-matched-commands (stderr &key (separator "Did you mean"))
+(cl-defun eshell-thefuck--get-all-matched-commands (stderr &key (separator "Did you mean"))
   (when (not (listp separator))
     (setq separator (list separator)))
   (let (should-yield)
@@ -266,7 +266,7 @@ Also erases call to `eshell/fuck'."
              if (and clean-for should-yield)
              collect (string-trim line))))
 
-(defun esh-tf--replace-regexp-in-string (regexp rep string &optional count)
+(defun eshell-thefuck--replace-regexp-in-string (regexp rep string &optional count)
   (with-temp-buffer
     (insert string)
     (if count
@@ -280,32 +280,32 @@ Also erases call to `eshell/fuck'."
         (replace-match rep)))
     (buffer-string)))
 
-(defun esh-tf--replace-argument (script from to)
-  (let ((replaced-in-the-end (esh-tf--replace-regexp-in-string
+(defun eshell-thefuck--replace-argument (script from to)
+  (let ((replaced-in-the-end (eshell-thefuck--replace-regexp-in-string
                               (format " %s$" (regexp-quote from))
                               (format " %s" to)
                               script
                               1)))
     (if (not (string= replaced-in-the-end script))
         replaced-in-the-end
-      (esh-tf--replace-regexp-in-string (format " %s " (regexp-quote from))
+      (eshell-thefuck--replace-regexp-in-string (format " %s " (regexp-quote from))
                                         (format " %s " to)
                                         script
                                         1))))
 
-(defun esh-tf--replace-command (command broken matched)
+(defun eshell-thefuck--replace-command (command broken matched)
   (let ((new-cmds (difflib-get-close-matches broken matched :cutoff 0.1)))
     (mapcar
      (lambda (cmd)
-       (esh-tf--replace-argument (oref command :script)
+       (eshell-thefuck--replace-argument (oref command :script)
                                  broken
                                  (string-trim cmd)))
      new-cmds)))
 
-(defun esh-tf--escape-quotes (str)
+(defun eshell-thefuck--escape-quotes (str)
   (replace-regexp-in-string "\"" "\\\\\"" str))
 
-(cl-defmacro esh-tf--for-app (app-names &rest body &key (at-least 0) &allow-other-keys)
+(cl-defmacro eshell-thefuck--for-app (app-names &rest body &key (at-least 0) &allow-other-keys)
   (declare (indent defun))
   (cl-remf body :at-least)
   (let ((app-names (if (not (listp app-names)) (list app-names) app-names)))
@@ -314,7 +314,7 @@ Also erases call to `eshell/fuck'."
          ,@body
        nil)))
 
-(cl-defmacro esh-tf--sudo-support (func)
+(cl-defmacro eshell-thefuck--sudo-support (func)
   (declare (indent defun))
   `(lambda (command)
      (let ((fn ,func))
@@ -323,7 +323,7 @@ Also erases call to `eshell/fuck'."
          (let ((result
                 (funcall
                  fn
-                 (esh-tf-update command
+                 (eshell-thefuck-update command
                                 :script
                                 (substring (oref command :script) 5)))))
            (cond ((stringp result)
@@ -333,7 +333,7 @@ Also erases call to `eshell/fuck'."
                  (t result)))))))
 
 ;; TODO: implement alias expansion
-;; (defun esh-tf--expand-aliases (script)
+;; (defun eshell-thefuck--expand-aliases (script)
 ;;   (let ((aliases eshell-command-aliases-list))
 ;;     (mapcar (lambda (cell)
 ;;               (let ((def cadr cell))
@@ -342,12 +342,12 @@ Also erases call to `eshell/fuck'."
 
 ;;* Rules
 ;;** no-command
-(defun esh-tf--get-used-executables (command)
+(defun eshell-thefuck--get-used-executables (command)
   (let ((not-corrected (;; We just want to exclude "fuck" and the last
                         ;; command, is cddr may be too much?
                         cddr
                         (ring-elements eshell-history-ring)))
-        (executables (esh-tf--get-all-executables)))
+        (executables (eshell-thefuck--get-all-executables)))
     (mapcar
      (lambda (x) (car (split-string x " ")))
      (cl-remove-if
@@ -359,23 +359,23 @@ Also erases call to `eshell/fuck'."
          (not (member (car (split-string line " ")) executables))))
       not-corrected))))
 
-(defvar esh-tf-rule-no-command
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-no-command
+  (eshell-thefuck-rule
    :match
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
        (let ((cmd (car (oref command :script-parts))))
-         (and (not (esh-tf--which cmd))
+         (and (not (eshell-thefuck--which cmd))
               (string-match-p "command not found" (oref command :output))
-              (difflib-get-close-matches cmd (esh-tf--get-all-executables))
+              (difflib-get-close-matches cmd (eshell-thefuck--get-all-executables))
               t))))
    :get-new-command
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
        (let* ((old-command (car (oref command :script-parts)))
-              (already-used (esh-tf--get-closest
+              (already-used (eshell-thefuck--get-closest
                              old-command
-                             (esh-tf--get-used-executables command)
+                             (eshell-thefuck--get-used-executables command)
                              :fallback-to-first nil))
               (new-cmds (when already-used (list already-used)))
               (new-commands
@@ -384,7 +384,7 @@ Also erases call to `eshell/fuck'."
                                        (member cmd new-cmds))
                                      (difflib-get-close-matches
                                       old-command
-                                      (esh-tf--get-all-executables))))))
+                                      (eshell-thefuck--get-all-executables))))))
          (mapcar
           (lambda (new-command)
             (string-join
@@ -395,11 +395,11 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** git-not-command
-(defvar esh-tf-rule-git-not-command
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-git-not-command
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app ("git" "hub")
+     (eshell-thefuck--for-app ("git" "hub")
        (let ((output (oref command :output)))
          (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
               (or (string-match-p "The most similar command" output)
@@ -410,27 +410,27 @@ Also erases call to `eshell/fuck'."
             (broken-cmd (and (string-match "git: '\\([^']*\\)' is not a git command"
                                            output)
                              (match-string 1 output)))
-            (matched (esh-tf--get-all-matched-commands
+            (matched (eshell-thefuck--get-all-matched-commands
                       output
                       :separator
                       '("The most similar command"
                         "Did you mean"))))
        (message "matched: %S" matched)
-       (esh-tf--replace-command command broken-cmd matched)))
+       (eshell-thefuck--replace-command command broken-cmd matched)))
    :enabled t))
 
-;; (defvar esh-tf-rule-git-)
+;; (defvar eshell-thefuck-rule-git-)
 
 ;;** cd-correction
-(defvar esh-tf-rule-cd-correction
+(defvar eshell-thefuck-rule-cd-correction
   ;; TODO: this should be able to replace cd anywhere in the command.
   ;; TODO: looks like there's too many string-match-p's, pretty sure this
   ;; should be fixed to one for eshell
   ;; TODO: check out the behavior of "cd cd foo" in eshell
-  (esh-tf-rule
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app "cd"
+     (eshell-thefuck--for-app "cd"
        (let ((output (downcase (oref command :output))))
          (or (string-match-p "no such file or directory" output)
              (string-match-p "cd: can't cd to" output)
@@ -475,14 +475,14 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** cd-mkdir
-(defvar esh-tf-rule-cd-mkdir
+(defvar eshell-thefuck-rule-cd-mkdir
   ;; TODO: this should be able to replace cd anywhere in the command.
   ;; TODO: looks like there's too many string-match-p's, pretty sure this
   ;; should be fixed to one for eshell
-  (esh-tf-rule
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app "cd"
+     (eshell-thefuck--for-app "cd"
        (let ((output (downcase (oref command :output))))
          (or (string-match-p "no such file or directory" output)
              (string-match-p "cd: can't cd to" output)
@@ -495,8 +495,8 @@ Also erases call to `eshell/fuck'."
                                (oref command :script)))
    :enabled t))
 ;;** cd-parent
-(defvar esh-tf-rule-cd-parent
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-cd-parent
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (string= (oref command :script) "cd.."))
@@ -506,8 +506,8 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** chmod-x
-(defvar esh-tf-rule-chmod-x
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-chmod-x
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (let ((script-parts (oref command :script-parts)))
@@ -523,57 +523,57 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** cp-omitting-directory
-(defvar esh-tf-rule-cp-omitting-directory
+(defvar eshell-thefuck-rule-cp-omitting-directory
   ;; TODO: Should be able to replace cp anywhere in command
-  (esh-tf-rule
+  (eshell-thefuck-rule
    :match
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
-       (esh-tf--for-app "cp"
+       (eshell-thefuck--for-app "cp"
          (let ((output (downcase (oref command :output))))
            (and
             (or (string-match-p "omitting directory" output)
                 (string-match-p "is a directory" output))
             t)))))
    :get-new-command
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
        (replace-regexp-in-string "^cp" "cp -a" (oref command :script))))
    :enabled t))
 
 ;;** dirty-untar
-(defun esh-tf--is-tar-extract (cmd)
+(defun eshell-thefuck--is-tar-extract (cmd)
   (or (string-match-p "--extract" cmd)
       (let ((split-cmd (split-string cmd " " 'omit-nulls)))
         (and (> (length split-cmd) 1) (string-match-p "x" (cadr split-cmd))))))
 
-(defvar esh-tf--tar-extensions '(".tar" ".tar.Z" ".tar.bz2" ".tar.gz" ".tar.lz"
+(defvar eshell-thefuck--tar-extensions '(".tar" ".tar.Z" ".tar.bz2" ".tar.gz" ".tar.lz"
                                  ".tar.lzma" ".tar.xz" ".taz" ".tb2" ".tbz" ".tbz2"
                                  ".tgz" ".tlz" ".txz" ".tz"))
 
-(defun esh-tf--tar-file (cmd)
+(defun eshell-thefuck--tar-file (cmd)
   (let ((c (cl-find-if
             (lambda (c)
               (cl-find-if
                (lambda (suf)
                  (string-suffix-p suf c))
-               esh-tf--tar-extensions))
+               eshell-thefuck--tar-extensions))
             cmd)))
     (when c
       (list c (car (split-string c "\\." 'omit-nulls))))))
 
-(defvar esh-tf-rule-dirty-untar
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-dirty-untar
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app "tar"
+     (eshell-thefuck--for-app "tar"
        (let ((script (oref command :script)))
          (and (not (string-match-p "-C" script))
-              (esh-tf--is-tar-extract script)
-              (esh-tf--tar-file (oref command :script-parts))))))
+              (eshell-thefuck--is-tar-extract script)
+              (eshell-thefuck--tar-file (oref command :script-parts))))))
    :get-new-command
    (lambda (command)
-     (let ((dir (eshell-quote-argument (cadr (esh-tf--tar-file
+     (let ((dir (eshell-quote-argument (cadr (eshell-thefuck--tar-file
                                               (oref command :script-parts))))))
        (format "mkdir -p %s && %s -C %s" dir (oref command :script) dir)))
    :side-effect
@@ -581,7 +581,7 @@ Also erases call to `eshell/fuck'."
      (let ((tar-files
             (split-string
              (shell-command-to-string
-              (concat "tar -tf " (car (esh-tf--tar-file
+              (concat "tar -tf " (car (eshell-thefuck--tar-file
                                        (oref old-cmd :script-parts)))))
              "\n"
              'omit-nulls)))
@@ -592,8 +592,8 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** sudo
-(defvar esh-tf-rule-sudo
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-sudo
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (let ((output (downcase (oref command :output)))
@@ -636,7 +636,7 @@ Also erases call to `eshell/fuck'."
      (let ((script (oref command :script)))
        (cond ((string-match-p "&&" script)
               (format "sudo sh -c \"%s\""
-                      (esh-tf--escape-quotes
+                      (eshell-thefuck--escape-quotes
                        (string-join (cl-remove-if
                                      (lambda (part)
                                        (string= part "sudo"))
@@ -644,16 +644,16 @@ Also erases call to `eshell/fuck'."
                                     " "))))
              ((string-match-p ">" script)
               (format "sudo sh -c \"%s\""
-                      (esh-tf--escape-quotes (oref command :script-parts))))
+                      (eshell-thefuck--escape-quotes (oref command :script-parts))))
              (t (format "sudo %s" script)))))
    :enabled t))
 
 ;;** ls-all
-(defvar esh-tf-rule-ls-all
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-ls-all
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app "ls"
+     (eshell-thefuck--for-app "ls"
        (string= (string-trim (oref command :output)) "")))
    :get-new-command
    (lambda (command)
@@ -661,16 +661,16 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** mkdir-p
-(defvar esh-tf-rule-mkdir-p
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-mkdir-p
+  (eshell-thefuck-rule
    :match
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
        (and (string-match-p "mkdir" (oref command :script))
             (string-match-p "No such file or directory" (oref command :output))
             t)))
    :get-new-command
-   (esh-tf--sudo-support
+   (eshell-thefuck--sudo-support
      (lambda (command)
        (replace-regexp-in-string (rx bow "mkdir " (group (0+ nonl)))
                                  "mkdir -p \\1"
@@ -678,11 +678,11 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** touch
-(defvar esh-tf-rule-touch
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-touch
+  (eshell-thefuck-rule
    :match
    (lambda (command)
-     (esh-tf--for-app "touch"
+     (eshell-thefuck--for-app "touch"
        (and (string-match-p "No such file or directory" (oref command :output)))))
    :get-new-command
    (lambda (command)
@@ -694,8 +694,8 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** dry
-(defvar esh-tf-rule-dry
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-dry
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (let ((split-command (oref command :script-parts)))
@@ -708,7 +708,7 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** pacman
-(defun esh-tf--get-pkgfile (parts)
+(defun eshell-thefuck--get-pkgfile (parts)
   (let* ((cmd (if (string= (car parts) "sudo") (cadr parts) (car parts)))
          (packages (split-string
                     (shell-command-to-string (concat "pkgfile -b " cmd))
@@ -716,17 +716,17 @@ Also erases call to `eshell/fuck'."
                     'omit-nulls)))
     packages))
 
-(defvar esh-tf-rule-pacman
+(defvar eshell-thefuck-rule-pacman
   ;; TODO: this conflicts with pacman-not-found, example: sudo pacman -S llc
-  (esh-tf-rule
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (and (string-match-p "command not found" (oref command :output))
-          (esh-tf--get-pkgfile (oref command :script-parts))))
+          (eshell-thefuck--get-pkgfile (oref command :script-parts))))
    :get-new-command
    (lambda (command)
      (let ((script (oref command :script))
-           (packages (esh-tf--get-pkgfile (oref command :script-parts)))
+           (packages (eshell-thefuck--get-pkgfile (oref command :script-parts)))
            (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
        (mapcar (lambda (package)
                  (format "%s -S %s && %s" pacman package script))
@@ -736,8 +736,8 @@ Also erases call to `eshell/fuck'."
    :priority 3000))
 
 ;;** pacman-not-found
-(defvar esh-tf-rule-pacman-not-found
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-pacman-not-found
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (let ((script-parts (oref command :script-parts)))
@@ -748,13 +748,13 @@ Also erases call to `eshell/fuck'."
    :get-new-command
    (lambda (command)
      (let ((pgr (car (last (oref command :script-parts)))))
-       (esh-tf--replace-command command pgr (esh-tf--get-pkgfile `(,pgr)))))
+       (eshell-thefuck--replace-command command pgr (eshell-thefuck--get-pkgfile `(,pgr)))))
    :enabled (and (executable-find "pkgfile")
                  (executable-find "pacman"))))
 
 ;;** rm-dir
-(defvar esh-tf-rule-rm-dir
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-rm-dir
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (and (member "rm" (oref command :script-parts))
@@ -769,8 +769,8 @@ Also erases call to `eshell/fuck'."
    :enabled t))
 
 ;;** sl-ls
-(defvar esh-tf-rule-sl-ls
-  (esh-tf-rule
+(defvar eshell-thefuck-rule-sl-ls
+  (eshell-thefuck-rule
    :match
    (lambda (command)
      (string= (oref command :script) "sl"))
@@ -778,102 +778,102 @@ Also erases call to `eshell/fuck'."
    (lambda (_command)
      "ls")
    :enabled t))
-(defvar-local esh-tf--old-command nil)
+(defvar-local eshell-thefuck--old-command nil)
 
-(defvar-local esh-tf--buffer-commands nil)
+(defvar-local eshell-thefuck--buffer-commands nil)
 
-(defvar-local esh-tf--command-ind nil)
+(defvar-local eshell-thefuck--command-ind nil)
 
-(defvar esh-tf-active-map (let ((map (make-sparse-keymap)))
-                            (define-key map [up] 'esh-tf--selector-prev)
-                            (define-key map [down] 'esh-tf--selector-next)
-                            (define-key map [return] 'esh-tf--selector-select)
+(defvar eshell-thefuck-active-map (let ((map (make-sparse-keymap)))
+                            (define-key map [up] 'eshell-thefuck--selector-prev)
+                            (define-key map [down] 'eshell-thefuck--selector-next)
+                            (define-key map [return] 'eshell-thefuck--selector-select)
                             (define-key map (kbd "C-c") 'eshell-interrupt-process)
                             map))
 
-(defun esh-tf--insert-prompt ()
+(defun eshell-thefuck--insert-prompt ()
   "Insert prompt for current corrected command.
 
-Command is taken from index `esh-tf--comand-ind' in
-buffer-local-variable `esh-tf--buffer-commands'."
+Command is taken from index `eshell-thefuck--comand-ind' in
+buffer-local-variable `eshell-thefuck--buffer-commands'."
 
   (insert
-   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
    " "
    "["
-   (propertize "enter" 'face 'esh-tf-enter-face)
-   (if (< 1 (length esh-tf--buffer-commands))
+   (propertize "enter" 'face 'eshell-thefuck-enter-face)
+   (if (< 1 (length eshell-thefuck--buffer-commands))
        (concat "/"
-               (propertize "↑" 'face 'esh-tf-up-down-face)
+               (propertize "↑" 'face 'eshell-thefuck-up-down-face)
                "/"
-               (propertize "↓" 'face 'esh-tf-up-down-face))
+               (propertize "↓" 'face 'eshell-thefuck-up-down-face))
      "")
    "/"
-   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   (propertize "C-c" 'face 'eshell-thefuck-c-c-face)
    "]"))
 
-(defun esh-tf--selector ()
+(defun eshell-thefuck--selector ()
   "Initialize corected command selector and transient map."
-  (esh-tf--insert-prompt)
+  (eshell-thefuck--insert-prompt)
   (ignore
-   (set-transient-map esh-tf-active-map
+   (set-transient-map eshell-thefuck-active-map
                       t
                       (lambda ()
                         (eshell-bol)
                         (kill-line)))))
 
-(defun esh-tf--selector-prev ()
+(defun eshell-thefuck--selector-prev ()
   "Display previous corrected command."
   (interactive)
-  (setq esh-tf--command-ind
-        (if (= esh-tf--command-ind 0)
-            (1- (length esh-tf--buffer-commands))
-          (1- esh-tf--command-ind)))
+  (setq eshell-thefuck--command-ind
+        (if (= eshell-thefuck--command-ind 0)
+            (1- (length eshell-thefuck--buffer-commands))
+          (1- eshell-thefuck--command-ind)))
   (eshell-bol)
   (kill-line)
   (insert
-   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
    " "
    "["
-   (propertize "enter" 'face 'esh-tf-enter-face)
-   (if (< 1 (length esh-tf--buffer-commands))
+   (propertize "enter" 'face 'eshell-thefuck-enter-face)
+   (if (< 1 (length eshell-thefuck--buffer-commands))
        (concat "/"
-               (propertize "↑" 'face 'esh-tf-up-down-face)
+               (propertize "↑" 'face 'eshell-thefuck-up-down-face)
                "/"
-               (propertize "↓" 'face 'esh-tf-up-down-face))
+               (propertize "↓" 'face 'eshell-thefuck-up-down-face))
      "")
    "/"
-   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   (propertize "C-c" 'face 'eshell-thefuck-c-c-face)
    "]"))
 
-(defun esh-tf--selector-next ()
+(defun eshell-thefuck--selector-next ()
   "Display next corrected command."
   (interactive)
-  (setq esh-tf--command-ind
-        (if (= esh-tf--command-ind (1- (length esh-tf--buffer-commands)))
+  (setq eshell-thefuck--command-ind
+        (if (= eshell-thefuck--command-ind (1- (length eshell-thefuck--buffer-commands)))
             0
-          (1+ esh-tf--command-ind)))
+          (1+ eshell-thefuck--command-ind)))
   (eshell-bol)
   (kill-line)
   (insert
-   (oref (nth esh-tf--command-ind esh-tf--buffer-commands) :script)
+   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
    " "
    "["
-   (propertize "enter" 'face 'esh-tf-enter-face)
-   (if (< 1 (length esh-tf--buffer-commands))
+   (propertize "enter" 'face 'eshell-thefuck-enter-face)
+   (if (< 1 (length eshell-thefuck--buffer-commands))
        (concat "/"
-               (propertize "↑" 'face 'esh-tf-up-down-face)
+               (propertize "↑" 'face 'eshell-thefuck-up-down-face)
                "/"
-               (propertize "↓" 'face 'esh-tf-up-down-face))
+               (propertize "↓" 'face 'eshell-thefuck-up-down-face))
      "")
    "/"
-   (propertize "C-c" 'face 'esh-tf-c-c-face)
+   (propertize "C-c" 'face 'eshell-thefuck-c-c-face)
    "]"))
 
-(defun esh-tf--selector-select ()
+(defun eshell-thefuck--selector-select ()
   "Run currently displayed corrected command."
   (interactive)
-  (let ((corrected (nth esh-tf--command-ind esh-tf--buffer-commands)))
+  (let ((corrected (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands)))
     (when (oref corrected :side-effect)
       (funcall (oref corrected :side-effect))))
   (search-backward " ")
@@ -897,19 +897,19 @@ buffer-local-variable `esh-tf--buffer-commands'."
                                 (buffer-substring-no-properties
                                  (point)
                                  (line-end-position))))
-         (command (esh-tf-command :script input :output out))
-         (corrected-commands (esh-tf--get-corrected-commands command)))
+         (command (eshell-thefuck-command :script input :output out))
+         (corrected-commands (eshell-thefuck--get-corrected-commands command)))
     (if corrected-commands
         (progn
-          (setq esh-tf--old-command command
-                esh-tf--buffer-commands corrected-commands
-                esh-tf--command-ind 0)
-          (when esh-tf-alter-buffer
+          (setq eshell-thefuck--old-command command
+                eshell-thefuck--buffer-commands corrected-commands
+                eshell-thefuck--command-ind 0)
+          (when eshell-thefuck-alter-buffer
             (eshell-next-prompt -2)
             (let ((inhibit-read-only t))
               (delete-region (line-beginning-position) (point-max))))
-          (esh-tf--selector))
+          (eshell-thefuck--selector))
       (message "No fucks given!"))))
 
-(provide 'esh-tf)
-;;; esh-tf.el ends here
+(provide 'eshell-thefuck)
+;;; eshell-thefuck.el ends here
