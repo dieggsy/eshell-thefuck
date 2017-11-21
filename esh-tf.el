@@ -33,6 +33,7 @@
 (require 'difflib)
 (require 'eshell)
 (require 'em-prompt)
+(require 'eieio)
 
 ;;* Customization
 (defgroup esh-tf nil
