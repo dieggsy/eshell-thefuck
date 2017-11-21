@@ -1,15 +1,10 @@
 * eshell-thefuck
-This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It's still very much a work
+This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It relies heavily on
+[[https://github.com/dieggsy/difflib.el][difflib.el]], an emacs-lisp port of python's difflib. It's still very much a work
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
-** Todo [2/8]
-*** DONE UI improvement
-CLOSED: [2017-11-12 Sun 14:06]
-Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
-swallow every key here. We also don't /need/ to since we don't have the same UI
-limitations of a terminal emulator. We could probably just move the prompt to
-eshell's next prompt and add a sparse keymap there for up/down/RET/C-c.
+** Todo [2/9]
 *** TODO Alias expansion
 Both for eshell and git (look into git_support equivalent)
 *** TODO More "generic" rules
@@ -26,26 +21,26 @@ Fixes misspelled commands like ~aws dynamdb scan~
 Runs ~cargo build~ instead of ~cargo~
 ***** TODO ~cargo_no_command~
 Fixes wrongs commands like ~cargo buid~
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-correction][cd-correction]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-cd-correction][cd-correction]]
 CLOSED: [2017-11-10 Fri 21:46]
 Spellchecks and correct failed cd commands
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-mkdir][cd-mkdir]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-cd-mkdir][cd-mkdir]]
 CLOSED: [2017-11-10 Fri 21:47]
 Creates directories before cd'ing into them
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cd-parent][cd-parent]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-cd-parent][cd-parent]]
 CLOSED: [2017-11-10 Fri 21:48]
 Changes ~cd..~ to ~cd ..~
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-chmod-x][chmod-x]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-chmod-x][chmod-x]]
 CLOSED: [2017-11-10 Fri 21:48]
 Add execution bit
 ***** TODO ~composer_not_command~
 Fixes composer command name
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-cp-omitting-directory][cp-omitting-directory]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-cp-omitting-directory][cp-omitting-directory]]
 CLOSED: [2017-11-10 Fri 21:48]
 Adds ~-a~ when you ~cp~ directory
 ***** TODO ~cpp11~
 Adds missing ~-std=c++11~ to ~g++~ or ~clang++~
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-dirty-untar][dirty-untar]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-dirty-untar][dirty-untar]]
 CLOSED: [2017-11-10 Fri 21:51]
 Fixes ~tar x~ command that untarred in the current directory
 ***** TODO ~dirty_unzip~
@@ -91,7 +86,7 @@ Fixes ~git stash~ commands (misspelled subcommand and missing ~save~)
 Fixes ~fatal: bad flag '...' after filename~
 ***** TODO ~git_help_aliased~
 Fixes ~git help <alias>~ commands replacing <alias> with the aliased command
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-git-not-command][git-not-command]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-git-not-command][git-not-command]]
 CLOSED: [2017-11-10 Fri 21:44]
 Fixes wrong git commands like ~git brnch~
 ***** TODO ~git_pull~
@@ -190,7 +185,7 @@ Fixes ~npm~ custom script name in ~npm run-script <script>~
 Adds missing ~run-script~ for custom ~npm~ scripts
 ***** TODO ~npm_wrong_command~
 Fixes wrong npm commands like ~npm urgrade~
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-no-command][no-command]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-no-command][no-command]]
 CLOSED: [2017-11-10 Fri 21:37]
 Fixes wrong console commands, for example ~vom/vim~
 ***** TODO ~no_such_file~
@@ -229,7 +224,7 @@ CLOSED: [2017-11-11 Sat 18:24]
 Changes ~sl~ to ~ls~
 ***** TODO ~ssh_known_hosts~
 Removes host from ~known_hosts~ on warning
-***** DONE [[file:esh-tf-rules.el::esh-tf--rule-sudo][sudo]]
+***** DONE [[file:esh-tf.el::esh-tf-rule-sudo][sudo]]
 CLOSED: [2017-11-10 Fri 21:51]
 Prepends ~sudo~ to previous command if it failed because of permissions
 ***** TODO ~sudo_command_from_user_path~
@@ -300,6 +295,18 @@ perhaps more ugly) shell command.
 This would replace the incorrect command with the corrected one in
 ~eshell-history-ring~.
 *** TODO When getting last command, skip calls to eshell/fuck and fuck.
+*** TODO Speed optimization?
+It can be quite slow sometimes, depending on the enabled rules. Maybe we should
+disable very slow rules by default or something like that too.
+*** TODO Tests, probably.
+I don't know too much about writing tests, but writing them for this might
+suck, since it relies so heavily on eshell.
+*** DONE UI improvement
+CLOSED: [2017-11-12 Sun 14:06]
+Though it's closer to the original thefuck, we /really/ shouldn't block emacs or
+swallow every key here. We also don't /need/ to since we don't have the same UI
+limitations of a terminal emulator. We could probably just move the prompt to
+eshell's next prompt and add a sparse keymap there for up/down/RET/C-c.
 *** DONE Implement alter-buffer
 CLOSED: [2017-11-12 Sun 14:24]
 After running command, everything from incorrect command on would be erased,
