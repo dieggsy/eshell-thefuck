@@ -1,5 +1,5 @@
 * eshell-thefuck
-This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It relies heavily on
+This is a loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][thefuck]]. It relies heavily on
 [[https://github.com/dieggsy/difflib.el][difflib.el]], an emacs-lisp port of python's difflib. It's still very much a work
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
