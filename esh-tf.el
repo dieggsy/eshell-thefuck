@@ -732,7 +732,8 @@ Also erases call to `eshell/fuck'."
                  (format "%s -S %s && %s" pacman package script))
                packages)))
    :enabled (and (executable-find "pkgfile")
-                 (executable-find "pacman"))))
+                 (executable-find "pacman"))
+   :priority 3000))
 
 ;;** pacman-not-found
 (defvar esh-tf-rule-pacman-not-found
