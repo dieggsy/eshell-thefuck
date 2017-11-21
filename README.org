@@ -4,6 +4,8 @@ This is an loose eshell/emacs-lisp port of [[https://github.com/nvbn/thefuck][th
 in progress (see the todo list below), but if you like the idea, testing or
 contributions are most welcome!
 
+Note this readme is much better viewed in org-mode.
+
 ** Todo [2/9]
 *** TODO Alias expansion
 Both for eshell and git (look into git_support equivalent)
