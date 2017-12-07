@@ -843,6 +843,8 @@ Also erases call to `eshell/fuck'."
    (lambda (_command)
      "ls")
    :enabled t))
+
+;;* UI/backend
 (defvar-local eshell-thefuck--old-command nil)
 
 (defvar-local eshell-thefuck--buffer-commands nil)
