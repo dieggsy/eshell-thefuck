@@ -145,8 +145,8 @@ Also erases call to `eshell/fuck'."
             :type t
             :documentation "Whether rule is enabled.")
    (side-effect :initarg :side-effect
-                :initform ignore
-                :type function
+                :initform nil
+                :type (or function null)
                 :documentation "Side effect function.")
    (priority :initarg :priority
              :initform 0
