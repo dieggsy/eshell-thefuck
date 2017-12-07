@@ -174,6 +174,7 @@ Also erases call to `eshell/fuck'."
 ;;* Utils
 (cl-defmacro eshell-thefuck-new-rule (name
                                       &key
+                                      doc
                                       for-app
                                       sudo-support
                                       (match #'ignore)
@@ -182,35 +183,43 @@ Also erases call to `eshell/fuck'."
                                       side-effect
                                       (priority 0))
   (declare (indent defun))
-  `(defvar ,(intern (concat "eshell-thefuck-rule-" (symbol-name name)))
-     (eshell-thefuck-rule
-      :match
-      ,(progn
-         (when for-app
-           (setq match `(eshell-thefuck--for-app ,for-app :special t ,match)))
-         (setq match `(with-slots ((<script> script)
-                                   (<output> output)
-                                   (<parts> script-parts))
-                          <cmd>
-                        ,match))
-         (setq match `(lambda (<cmd>) ,match))
-         (if sudo-support
-             `(eshell-thefuck--sudo-support ,match)
-           match))
-      :get-new-command
-      ,(progn
-         (setq get-new-command `(lambda (<cmd>)
-                                  (with-slots ((<script> script)
-                                               (<output> output)
-                                               (<parts> script-parts))
-                                      <cmd>
-                                    ,get-new-command)))
-         (if sudo-support
-             `(eshell-thefuck--sudo-support ,get-new-command)
-           get-new-command))
-      :enabled ,enabled
-      :side-effect ,side-effect
-      :priority ,priority)))
+  (let ((rule-decl
+         `(eshell-thefuck-rule
+           :match
+           ,(progn
+              (when for-app
+                (setq match `(eshell-thefuck--for-app ,for-app :special t ,match)))
+              (setq match `(with-slots ((<script> script)
+                                        (<output> output)
+                                        (<parts> script-parts))
+                               <cmd>
+                             ,match))
+              (setq match `(lambda (<cmd>) ,match))
+              (if sudo-support
+                  `(eshell-thefuck--sudo-support ,match)
+                match))
+           :get-new-command
+           ,(progn
+              (setq get-new-command `(lambda (<cmd>)
+                                       (with-slots ((<script> script)
+                                                    (<output> output)
+                                                    (<parts> script-parts))
+                                           <cmd>
+                                         ,get-new-command)))
+              (if sudo-support
+                  `(eshell-thefuck--sudo-support ,get-new-command)
+                get-new-command))
+           :enabled ,enabled
+           :side-effect ,side-effect
+           :priority ,priority))
+        (rule-name (intern (concat "eshell-thefuck-rule-" (symbol-name name)))))
+    (if  (boundp rule-name)
+        `(progn
+           (when ,doc
+             (put ',rule-name 'variable-documentation ,doc))
+           (setq ,rule-name ,rule-decl))
+      `(defvar ,rule-name ,rule-decl
+         ,doc))))
 
 (defun eshell-thefuck--get-all-executables ()
   (delete-dups
