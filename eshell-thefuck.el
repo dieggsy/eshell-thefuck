@@ -172,6 +172,46 @@ Also erases call to `eshell/fuck'."
                         :priority (* priority (1+ n)))))))
 
 ;;* Utils
+(cl-defmacro eshell-thefuck-new-rule (name
+                                      &key
+                                      for-app
+                                      sudo-support
+                                      (match #'ignore)
+                                      (get-new-command #'ignore)
+                                      enabled
+                                      side-effect
+                                      (priority 0))
+  (declare (indent defun))
+  `(defvar ,(intern (concat "eshell-thefuck-rule-" (symbol-name name)))
+     (eshell-thefuck-rule
+      :match
+      ,(progn
+         (setq match `(with-slots ((<script> script)
+                                   (<output> output)
+                                   (<parts> script-parts))
+                          <cmd>
+                        ,match))
+         (when for-app
+           (setq match `(eshell-thefuck--for-app ,for-app ,match)))
+         (setq match `(lambda (<cmd>) ,match))
+         (if sudo-support
+             `(eshell-thefuck--sudo-support ,match)
+           match))
+      :get-new-command
+      ,(progn
+         (setq get-new-command `(lambda (<cmd>)
+                                  (with-slots ((<script> script)
+                                               (<output> output)
+                                               (<parts> script-parts))
+                                      <cmd>
+                                    ,get-new-command)))
+         (if sudo-support
+             `(eshell-thefuck--sudo-support ,get-new-command)
+           get-new-command))
+      :enabled ,enabled
+      :side-effect ,side-effect
+      :priority ,priority)))
+
 (defun eshell-thefuck--get-all-executables ()
   (delete-dups
    (append
