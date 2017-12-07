@@ -186,13 +186,13 @@ Also erases call to `eshell/fuck'."
      (eshell-thefuck-rule
       :match
       ,(progn
+         (when for-app
+           (setq match `(eshell-thefuck--for-app ,for-app :special t ,match)))
          (setq match `(with-slots ((<script> script)
                                    (<output> output)
                                    (<parts> script-parts))
                           <cmd>
                         ,match))
-         (when for-app
-           (setq match `(eshell-thefuck--for-app ,for-app ,match)))
          (setq match `(lambda (<cmd>) ,match))
          (if sudo-support
              `(eshell-thefuck--sudo-support ,match)
@@ -345,15 +345,27 @@ Also erases call to `eshell/fuck'."
 (defun eshell-thefuck--escape-quotes (str)
   (replace-regexp-in-string "\"" "\\\\\"" str))
 
-(cl-defmacro eshell-thefuck--for-app (app-names &rest body &key (at-least 0) &allow-other-keys)
+(cl-defmacro eshell-thefuck--for-app (app-names
+                                      &rest
+                                      body
+                                      &key
+                                      (at-least 0)
+                                      special
+                                      &allow-other-keys)
   (declare (indent defun))
   (cl-remf body :at-least)
+  (cl-remf body :special)
   (let ((app-names (if (not (listp app-names)) (list app-names) app-names)))
-    `(with-slots (script-parts) command
-       (if (and (> (length script-parts) ,at-least)
-                (member (car script-parts) ',app-names))
-           ,@body
-         nil))))
+    (if special
+        `(if (and (> (length <parts>) ,at-least)
+                  (member (car <parts>)',app-names))
+             ,@body
+           nil)
+      `(with-slots (script-parts) command
+         (if (and (> (length script-parts) ,at-least)
+                  (member (car script-parts) ',app-names))
+             ,@body
+           nil)))))
 
 (cl-defmacro eshell-thefuck--sudo-support (func)
   (declare (indent defun))
