@@ -253,16 +253,14 @@ Also erases call to `eshell/fuck'."
 
 (defun eshell-thefuck--which (name)
   (let (program
-        alias
         direct)
     (when (eq (aref name 0) eshell-explicit-command-char)
 	  (setq name (substring name 1)
 		    direct t))
     (when (and (not direct)
 	           (eshell-using-module 'eshell-alias)
-	           (setq alias
-		             (funcall (symbol-function 'eshell-lookup-alias)
-			                  name)))
+		       (funcall (symbol-function 'eshell-lookup-alias)
+			            name))
 	  (setq program t))
     (unless program
       (setq program
