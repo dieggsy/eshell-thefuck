@@ -398,6 +398,22 @@ Also erases call to `eshell/fuck'."
    :priority 3000
    :enabled t))
 
+;;** git-branch-delete
+(defvar eshell-thefuck-rule-git-branch-delete
+  (eshell-thefuck-rule
+   :match
+   (lambda (command)
+     (eshell-thefuck--for-app ("git" "hub")
+       (with-slots (script output) command
+         (and (string-match-p (regexp-quote "branch -d") script)
+              (string-match-p "If you are sure you want to delete it"
+                              output)))))
+   :get-new-command
+   (lambda (command)
+     (eshell-thefuck--replace-argument (eieio-oref command 'script)
+                                       "-d"
+                                       "-D"))
+   :enabled t))
 ;;** git-not-command
 (defvar eshell-thefuck-rule-git-not-command
   (eshell-thefuck-rule

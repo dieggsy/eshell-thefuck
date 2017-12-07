@@ -14,7 +14,7 @@ E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just
 it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
-**** TODO Default [15/116]
+**** TODO Default [16/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -70,7 +70,8 @@ Fixes "pathspec 'foo' did not match any file(s) known to git."
 Adds ~--force~ to ~git add <pathspec>...~ when paths are .gitignore'd
 ***** TODO ~git_bisect_usage~
 Fixes ~git bisect strt~, ~git bisect goood~, ~git bisect rset~, etc. when bisecting
-***** TODO ~git_branch_delete~
+***** DONE ~git_branch_delete~
+CLOSED: [2017-12-07 Thu 13:45]
 Changes ~git branch -d~ to ~git branch -D~
 ***** TODO ~git_branch_exists~
 Offers ~git branch -d foo~, ~git branch -D foo~ or ~git checkout foo~ when creating a branch that already exists
