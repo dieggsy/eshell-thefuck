@@ -98,14 +98,14 @@ Also erases call to `eshell/fuck'."
   "Command that should be fixed")
 
 (cl-defmethod initialize-instance :after ((command eshell-thefuck-command) &rest _args)
-  (oset command :script (string-trim (oref command :script)))
-  (oset command :script-parts (split-string (oref command :script)
-                                            nil
-                                            'omit-nulls)))
+  (with-slots (script) command
+    (oset command :script (string-trim script))
+    (oset command :script-parts (split-string script nil 'omit-nulls))))
 
 (cl-defmethod eshell-thefuck-update ((command eshell-thefuck-command)
-                             &key (script (oref command :script))
-                             (output (oref command :output)))
+                                     &key
+                                     (script (eieio-oref command 'script))
+                                     (output (eieio-oref command 'output)))
   (eshell-thefuck-command :script script :output output))
 
 ;;** Corrected command
@@ -155,20 +155,21 @@ Also erases call to `eshell/fuck'."
   "Initializes rule with given fields.")
 
 (cl-defmethod eshell-thefuck-is-match ((rule eshell-thefuck-rule) command)
-  (if (and (string-empty-p (oref command :output)))
+  (if (and (string-empty-p (eieio-oref command 'output)))
       nil
-    (funcall (oref rule :match) command)))
+    (funcall (eieio-oref rule 'match) command)))
 
 (cl-defmethod eshell-thefuck-get-corrected-commands ((rule eshell-thefuck-rule) command)
-  (let ((new-commands (funcall (oref rule :get-new-command) command)))
-    (when (not (listp new-commands))
-      (setq new-commands (list new-commands)))
-    (cl-loop for new-command in new-commands
-             as n = 0 then (1+ n)
-             collect (eshell-thefuck-corrected-command
-                      :script new-command
-                      :side-effect (oref rule :side-effect)
-                      :priority (* (oref rule :priority) (1+ n))))))
+  (with-slots (get-new-command side-effect priority) rule
+    (let ((new-commands (funcall get-new-command command)))
+      (when (not (listp new-commands))
+        (setq new-commands (list new-commands)))
+      (cl-loop for new-command in new-commands
+               as n = 0 then (1+ n)
+               collect (eshell-thefuck-corrected-command
+                        :script new-command
+                        :side-effect side-effect
+                        :priority (* priority (1+ n)))))))
 
 ;;* Utils
 (defun eshell-thefuck--get-all-executables ()
@@ -205,15 +206,15 @@ Also erases call to `eshell/fuck'."
   (let (program
         alias
         direct)
-    (if (eq (aref name 0) eshell-explicit-command-char)
-	    (setq name (substring name 1)
-		      direct t))
-    (if (and (not direct)
-	         (eshell-using-module 'eshell-alias)
-	         (setq alias
-		           (funcall (symbol-function 'eshell-lookup-alias)
-			                name)))
-	    (setq program t))
+    (when (eq (aref name 0) eshell-explicit-command-char)
+	  (setq name (substring name 1)
+		    direct t))
+    (when (and (not direct)
+	           (eshell-using-module 'eshell-alias)
+	           (setq alias
+		             (funcall (symbol-function 'eshell-lookup-alias)
+			                  name)))
+	  (setq program t))
     (unless program
       (setq program
             (let* ((esym (eshell-find-alias-function name))
@@ -233,7 +234,7 @@ Also erases call to `eshell/fuck'."
                         (and (boundp var) (not (keywordp var))))
                     (string-prefix-p "eshell-thefuck-rule-" name)
                     (eshell-thefuck-rule-p (symbol-value var))
-                    (oref (symbol-value var) :enabled))
+                    (eieio-oref (symbol-value var) 'enabled))
            (push (symbol-value var) cands)))))
     cands))
 
@@ -241,8 +242,8 @@ Also erases call to `eshell/fuck'."
   (let ((no-dups (cl-remove-duplicates
                   corrected-commands
                   :key (lambda (x)
-                         (oref x :script)))))
-    (cl-sort no-dups #'< :key (lambda (x) (oref x :priority)))))
+                         (eieio-oref x 'script)))))
+    (cl-sort no-dups #'< :key (lambda (x) (eieio-oref x 'priority)))))
 
 (defun eshell-thefuck--get-corrected-commands (command)
   (let* ((rules (eshell-thefuck--get-rules))
@@ -289,18 +290,17 @@ Also erases call to `eshell/fuck'."
     (if (not (string= replaced-in-the-end script))
         replaced-in-the-end
       (eshell-thefuck--replace-regexp-in-string (format " %s " (regexp-quote from))
-                                        (format " %s " to)
-                                        script
-                                        1))))
+                                                (format " %s " to)
+                                                script
+                                                1))))
 
 (defun eshell-thefuck--replace-command (command broken matched)
-  (let ((new-cmds (difflib-get-close-matches broken matched :cutoff 0.1)))
-    (mapcar
-     (lambda (cmd)
-       (eshell-thefuck--replace-argument (oref command :script)
-                                 broken
-                                 (string-trim cmd)))
-     new-cmds)))
+  (with-slots (script) command
+    (let ((new-cmds (difflib-get-close-matches broken matched :cutoff 0.1)))
+      (mapcar
+       (lambda (cmd)
+         (eshell-thefuck--replace-argument script broken (string-trim cmd)))
+       new-cmds))))
 
 (defun eshell-thefuck--escape-quotes (str)
   (replace-regexp-in-string "\"" "\\\\\"" str))
@@ -309,28 +309,30 @@ Also erases call to `eshell/fuck'."
   (declare (indent defun))
   (cl-remf body :at-least)
   (let ((app-names (if (not (listp app-names)) (list app-names) app-names)))
-    `(if (and (> (length (oref command :script-parts)) ,at-least)
-              (member (car (oref command :script-parts)) ',app-names))
-         ,@body
-       nil)))
+    `(with-slots (script-parts) command
+       (if (and (> (length script-parts) ,at-least)
+                (member (car script-parts) ',app-names))
+           ,@body
+         nil))))
 
 (cl-defmacro eshell-thefuck--sudo-support (func)
   (declare (indent defun))
   `(lambda (command)
-     (let ((fn ,func))
-       (if (not (string-prefix-p "sudo " (oref command :script)))
-           (funcall fn command)
-         (let ((result
-                (funcall
-                 fn
-                 (eshell-thefuck-update command
-                                :script
-                                (substring (oref command :script) 5)))))
-           (cond ((stringp result)
-                  (format "sudo %s" result))
-                 ((listp result)
-                  (mapcar (lambda (x) (format "sudo %s" x)) result))
-                 (t result)))))))
+     (with-slots (script) command
+       (let ((fn ,func))
+         (if (not (string-prefix-p "sudo " script))
+             (funcall fn command)
+           (let ((result
+                  (funcall
+                   fn
+                   (eshell-thefuck-update command
+                                          :script
+                                          (substring script 5)))))
+             (cond ((stringp result)
+                    (format "sudo %s" result))
+                   ((listp result)
+                    (mapcar (lambda (x) (format "sudo %s" x)) result))
+                   (t result))))))))
 
 ;; TODO: implement alias expansion
 ;; (defun eshell-thefuck--expand-aliases (script)
@@ -355,7 +357,7 @@ Also erases call to `eshell/fuck'."
         (or
          (string-prefix-p "fuck" (string-trim line))
          (string-prefix-p "eshell/fuck" (string-trim line))
-         (string= (string-trim line) (oref command :script))
+         (string= (string-trim line) (eieio-oref command 'script))
          (not (member (car (split-string line " ")) executables))))
       not-corrected))))
 
@@ -364,33 +366,35 @@ Also erases call to `eshell/fuck'."
    :match
    (eshell-thefuck--sudo-support
      (lambda (command)
-       (let ((cmd (car (oref command :script-parts))))
-         (and (not (eshell-thefuck--which cmd))
-              (string-match-p "command not found" (oref command :output))
-              (difflib-get-close-matches cmd (eshell-thefuck--get-all-executables))
-              t))))
+       (with-slots (script-parts output) command
+         (let ((cmd (car script-parts)))
+           (and (not (eshell-thefuck--which cmd))
+                (string-match-p "command not found" output)
+                (difflib-get-close-matches cmd (eshell-thefuck--get-all-executables))
+                t)))))
    :get-new-command
    (eshell-thefuck--sudo-support
      (lambda (command)
-       (let* ((old-command (car (oref command :script-parts)))
-              (already-used (eshell-thefuck--get-closest
-                             old-command
-                             (eshell-thefuck--get-used-executables command)
-                             :fallback-to-first nil))
-              (new-cmds (when already-used (list already-used)))
-              (new-commands
-               (append new-cmds
-                       (cl-remove-if (lambda (cmd)
-                                       (member cmd new-cmds))
-                                     (difflib-get-close-matches
-                                      old-command
-                                      (eshell-thefuck--get-all-executables))))))
-         (mapcar
-          (lambda (new-command)
-            (string-join
-             (append (list new-command) (cdr (oref command :script-parts)))
-             " "))
-          new-commands))))
+       (with-slots (script-parts) command
+         (let* ((old-command (car script-parts))
+                (already-used (eshell-thefuck--get-closest
+                               old-command
+                               (eshell-thefuck--get-used-executables command)
+                               :fallback-to-first nil))
+                (new-cmds (when already-used (list already-used)))
+                (new-commands
+                 (append new-cmds
+                         (cl-remove-if (lambda (cmd)
+                                         (member cmd new-cmds))
+                                       (difflib-get-close-matches
+                                        old-command
+                                        (eshell-thefuck--get-all-executables))))))
+           (mapcar
+            (lambda (new-command)
+              (string-join
+               (append (list new-command) (cdr script-parts))
+               " "))
+            new-commands)))))
    :priority 3000
    :enabled t))
 
@@ -400,23 +404,23 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app ("git" "hub")
-       (let ((output (oref command :output)))
+       (with-slots (output) command
          (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
               (or (string-match-p "The most similar command" output)
                   (string-match-p "Did you mean" output))))))
    :get-new-command
    (lambda (command)
-     (let* ((output (oref command :output))
-            (broken-cmd (and (string-match "git: '\\([^']*\\)' is not a git command"
-                                           output)
-                             (match-string 1 output)))
-            (matched (eshell-thefuck--get-all-matched-commands
-                      output
-                      :separator
-                      '("The most similar command"
-                        "Did you mean"))))
-       (message "matched: %S" matched)
-       (eshell-thefuck--replace-command command broken-cmd matched)))
+     (with-slots (output) command
+       (let* ((broken-cmd (and (string-match "git: '\\([^']*\\)' is not a git command"
+                                             output)
+                               (match-string 1 output)))
+              (matched (eshell-thefuck--get-all-matched-commands
+                        output
+                        :separator
+                        '("The most similar command"
+                          "Did you mean"))))
+         (message "matched: %S" matched)
+         (eshell-thefuck--replace-command command broken-cmd matched))))
    :enabled t))
 
 ;; (defvar eshell-thefuck-rule-git-)
@@ -431,7 +435,7 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app "cd"
-       (let ((output (downcase (oref command :output))))
+       (let ((output (downcase (eieio-oref command 'output))))
          (or (string-match-p "no such file or directory" output)
              (string-match-p "cd: can't cd to" output)
              (string-match-p "no such directory found" output)))))
@@ -441,7 +445,7 @@ Also erases call to `eshell/fuck'."
                                     "b")
                             1
                             2))
-            (dest (split-string (cadr (oref command :script-parts))
+            (dest (split-string (cadr (eieio-oref command 'script-parts))
                                 sep
                                 'omit-nulls))
             (cwd default-directory))
@@ -483,7 +487,7 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app "cd"
-       (let ((output (downcase (oref command :output))))
+       (let ((output (downcase (eieio-oref command 'output))))
          (or (string-match-p "no such file or directory" output)
              (string-match-p "cd: can't cd to" output)
              (string-match-p "no such directory found" output)
@@ -492,14 +496,14 @@ Also erases call to `eshell/fuck'."
    (lambda (command)
      (replace-regexp-in-string "^cd \\(.*\\)"
                                "mkdir -p \\1 && cd \\1"
-                               (oref command :script)))
+                               (eieio-oref command 'script)))
    :enabled t))
 ;;** cd-parent
 (defvar eshell-thefuck-rule-cd-parent
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (string= (oref command :script) "cd.."))
+     (string= (eieio-oref command 'script) "cd.."))
    :get-new-command
    (lambda (_command)
      "cd ..")
@@ -510,16 +514,15 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (let ((script-parts (oref command :script-parts)))
-       (and (string-prefix-p "./" (oref command :script))
-            (string-match-p "permission denied" (downcase (oref command :output)))
+     (with-slots (script-parts script output) command
+       (and (string-prefix-p "./" script)
+            (string-match-p "permission denied" (downcase output))
             (file-exists-p (car script-parts))
             (not (file-executable-p (car script-parts))))))
    :get-new-command
    (lambda (command)
-     (format "chmod +x %s && %s"
-             (substring (car (oref command :script-parts)) 2)
-             (oref command :script)))
+     (with-slots (script-parts script) command
+       (format "chmod +x %s && %s" (substring (car script-parts) 2) script)))
    :enabled t))
 
 ;;** cp-omitting-directory
@@ -530,7 +533,7 @@ Also erases call to `eshell/fuck'."
    (eshell-thefuck--sudo-support
      (lambda (command)
        (eshell-thefuck--for-app "cp"
-         (let ((output (downcase (oref command :output))))
+         (let ((output (downcase (eieio-oref command 'output))))
            (and
             (or (string-match-p "omitting directory" output)
                 (string-match-p "is a directory" output))
@@ -538,7 +541,7 @@ Also erases call to `eshell/fuck'."
    :get-new-command
    (eshell-thefuck--sudo-support
      (lambda (command)
-       (replace-regexp-in-string "^cp" "cp -a" (oref command :script))))
+       (replace-regexp-in-string "^cp" "cp -a" (eieio-oref command 'script))))
    :enabled t))
 
 ;;** dirty-untar
@@ -548,8 +551,8 @@ Also erases call to `eshell/fuck'."
         (and (> (length split-cmd) 1) (string-match-p "x" (cadr split-cmd))))))
 
 (defvar eshell-thefuck--tar-extensions '(".tar" ".tar.Z" ".tar.bz2" ".tar.gz" ".tar.lz"
-                                 ".tar.lzma" ".tar.xz" ".taz" ".tb2" ".tbz" ".tbz2"
-                                 ".tgz" ".tlz" ".txz" ".tz"))
+                                         ".tar.lzma" ".tar.xz" ".taz" ".tb2" ".tbz" ".tbz2"
+                                         ".tgz" ".tlz" ".txz" ".tz"))
 
 (defun eshell-thefuck--tar-file (cmd)
   (let ((c (cl-find-if
@@ -567,22 +570,23 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app "tar"
-       (let ((script (oref command :script)))
+       (with-slots (script script-parts) command
          (and (not (string-match-p "-C" script))
               (eshell-thefuck--is-tar-extract script)
-              (eshell-thefuck--tar-file (oref command :script-parts))))))
+              (eshell-thefuck--tar-file script-parts)))))
    :get-new-command
    (lambda (command)
-     (let ((dir (eshell-quote-argument (cadr (eshell-thefuck--tar-file
-                                              (oref command :script-parts))))))
-       (format "mkdir -p %s && %s -C %s" dir (oref command :script) dir)))
+     (with-slots (script script-parts) command
+       (let ((dir (eshell-quote-argument
+                   (cadr (eshell-thefuck--tar-file script-parts)))))
+         (format "mkdir -p %s && %s -C %s" dir script dir))))
    :side-effect
    (lambda (old-cmd _command)
      (let ((tar-files
             (split-string
              (shell-command-to-string
               (concat "tar -tf " (car (eshell-thefuck--tar-file
-                                       (oref old-cmd :script-parts)))))
+                                       (eieio-oref old-cmd 'script-parts)))))
              "\n"
              'omit-nulls)))
        (message "FILES: %S" tar-files)
@@ -596,55 +600,54 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (let ((output (downcase (oref command :output)))
-           (script-parts (oref command :script-parts))
-           (patterns '("permission denied"
-                       "eacces"
-                       "pkg: insufficient privileges"
-                       "you cannot perform this operation unless you are root"
-                       "non-root users cannot"
-                       "operation not permitted"
-                       "root privilege"
-                       "this command has to be run under the root user."
-                       "this operation requires root."
-                       "requested operation requires superuser privilege"
-                       "must be run as root"
-                       "must run as root"
-                       "must be superuser"
-                       "must be root"
-                       "need to be root"
-                       "need root"
-                       "needs to be run as root"
-                       "only root can "
-                       "you don\"t have access to the history db."
-                       "authentication is required"
-                       "edspermissionerror"
-                       "you don\"t have write permissions"
-                       "use `sudo`"
-                       "SudoRequiredError"
-                       "error: insufficient privileges")))
-       (cl-block match
-         (when (and (not (member "&&" script-parts))
-                    (string= (car script-parts) "sudo"))
-           (cl-return-from match nil))
-         (cl-loop
-          for pattern in patterns
-          if (string-match-p (regexp-quote pattern) output)
-          do (cl-return-from match t)))))
+     (with-slots (output script-parts) command
+       (let ((patterns '("permission denied"
+                         "eacces"
+                         "pkg: insufficient privileges"
+                         "you cannot perform this operation unless you are root"
+                         "non-root users cannot"
+                         "operation not permitted"
+                         "root privilege"
+                         "this command has to be run under the root user."
+                         "this operation requires root."
+                         "requested operation requires superuser privilege"
+                         "must be run as root"
+                         "must run as root"
+                         "must be superuser"
+                         "must be root"
+                         "need to be root"
+                         "need root"
+                         "needs to be run as root"
+                         "only root can "
+                         "you don\"t have access to the history db."
+                         "authentication is required"
+                         "edspermissionerror"
+                         "you don\"t have write permissions"
+                         "use `sudo`"
+                         "SudoRequiredError"
+                         "error: insufficient privileges")))
+         (cl-block match
+           (when (and (not (member "&&" script-parts))
+                      (string= (car script-parts) "sudo"))
+             (cl-return-from match nil))
+           (cl-loop
+            for pattern in patterns
+            if (string-match-p (regexp-quote pattern) output)
+            do (cl-return-from match t))))))
    :get-new-command
    (lambda (command)
-     (let ((script (oref command :script)))
+     (with-slots (script script-parts) command
        (cond ((string-match-p "&&" script)
               (format "sudo sh -c \"%s\""
                       (eshell-thefuck--escape-quotes
                        (string-join (cl-remove-if
                                      (lambda (part)
                                        (string= part "sudo"))
-                                     (oref command :script-parts))
+                                     script-parts)
                                     " "))))
              ((string-match-p ">" script)
               (format "sudo sh -c \"%s\""
-                      (eshell-thefuck--escape-quotes (oref command :script-parts))))
+                      (eshell-thefuck--escape-quotes script-parts)))
              (t (format "sudo %s" script)))))
    :enabled t))
 
@@ -654,10 +657,10 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app "ls"
-       (string= (string-trim (oref command :output)) "")))
+       (string= (string-trim (eieio-oref command 'output)) "")))
    :get-new-command
    (lambda (command)
-     (string-join (append '("ls" "-a") (cdr (oref command :script-parts))) " "))
+     (string-join (append '("ls" "-a") (cdr (eieio-oref command 'script-parts))) " "))
    :enabled t))
 
 ;;** mkdir-p
@@ -666,15 +669,17 @@ Also erases call to `eshell/fuck'."
    :match
    (eshell-thefuck--sudo-support
      (lambda (command)
-       (and (string-match-p "mkdir" (oref command :script))
-            (string-match-p "No such file or directory" (oref command :output))
-            t)))
+       (with-slots (script output) command
+         (and (string-match-p "mkdir" script)
+              (string-match-p "No such file or directory" output)
+              t))))
    :get-new-command
    (eshell-thefuck--sudo-support
      (lambda (command)
-       (replace-regexp-in-string (rx bow "mkdir " (group (0+ nonl)))
-                                 "mkdir -p \\1"
-                                 (oref command :script))))
+       (replace-regexp-in-string
+        (rx bow "mkdir " (group (0+ nonl)))
+        "mkdir -p \\1"
+        (eieio-oref command 'script))))
    :enabled t))
 
 ;;** touch
@@ -683,14 +688,15 @@ Also erases call to `eshell/fuck'."
    :match
    (lambda (command)
      (eshell-thefuck--for-app "touch"
-       (and (string-match-p "No such file or directory" (oref command :output)))))
+       (and (string-match-p "No such file or directory"
+                            (eieio-oref command 'output)))))
    :get-new-command
    (lambda (command)
-     (let* ((output (oref command :output))
-            (path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
-                                     output)
-                       (match-string 1 output))))
-       (format "mkdir -p %s && %s" path (oref command :script))))
+     (with-slots (output script) command
+       (let* ((path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
+                                       output)
+                         (match-string 1 output))))
+         (format "mkdir -p %s && %s" path script))))
    :enabled t))
 
 ;;** dry
@@ -698,12 +704,12 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (let ((split-command (oref command :script-parts)))
+     (let ((split-command (eieio-oref command 'script-parts)))
        (and (>= (length split-command) 2)
             (string= (car split-command) (cadr split-command)))))
    :get-new-command
    (lambda (command)
-     (string-join (cdr (oref command :script-parts)) " "))
+     (string-join (cdr (eieio-oref command 'script-parts)) " "))
    :priority 900
    :enabled t))
 
@@ -721,16 +727,17 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (and (string-match-p "command not found" (oref command :output))
-          (eshell-thefuck--get-pkgfile (oref command :script-parts))))
+     (with-slots (output script-parts) command
+       (and (string-match-p "command not found" output)
+            (eshell-thefuck--get-pkgfile script-parts))))
    :get-new-command
    (lambda (command)
-     (let ((script (oref command :script))
-           (packages (eshell-thefuck--get-pkgfile (oref command :script-parts)))
-           (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
-       (mapcar (lambda (package)
-                 (format "%s -S %s && %s" pacman package script))
-               packages)))
+     (with-slots (script script-parts) command
+       (let ((packages (eshell-thefuck--get-pkgfile script-parts))
+             (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
+         (mapcar (lambda (package)
+                   (format "%s -S %s && %s" pacman package script))
+                 packages))))
    :enabled (and (executable-find "pkgfile")
                  (executable-find "pacman"))
    :priority 3000))
@@ -740,14 +747,15 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (let ((script-parts (oref command :script-parts)))
-       (and (or (member (car script-parts) '("pacman" "yaourt"))
-                (and (>= (length script-parts) 2)
-                     (equal (cl-subseq script-parts 0 2) '("sudo" "pacman"))))
-            (string-match-p "error: target not found:" (oref command :output)))))
+     (with-slots (output script-parts) command
+       (let ((script-parts script-parts))
+         (and (or (member (car script-parts) '("pacman" "yaourt"))
+                  (and (>= (length script-parts) 2)
+                       (equal (cl-subseq script-parts 0 2) '("sudo" "pacman"))))
+              (string-match-p "error: target not found:" output)))))
    :get-new-command
    (lambda (command)
-     (let ((pgr (car (last (oref command :script-parts)))))
+     (let ((pgr (car (last (eieio-oref command 'script-parts)))))
        (eshell-thefuck--replace-command command pgr (eshell-thefuck--get-pkgfile `(,pgr)))))
    :enabled (and (executable-find "pkgfile")
                  (executable-find "pacman"))))
@@ -757,15 +765,16 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (and (member "rm" (oref command :script-parts))
-          (string-match-p "is a directory" (downcase (oref command :output)))))
+     (with-slots (script-parts output) command
+       (and (member "rm" script-parts)
+            (string-match-p "is a directory" (downcase output)))))
    :get-new-command
    (lambda (command)
-     (let* ((script (oref command :script))
-            (arguments (if (string-match-p "hdfs" script) "-r" "-rf")))
-       (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
-                                 (concat "rm " arguments " \\1")
-                                 script)))
+     (with-slots (script) command
+       (let ((arguments (if (string-match-p "hdfs" script) "-r" "-rf")))
+         (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
+                                   (concat "rm " arguments " \\1")
+                                   script))))
    :enabled t))
 
 ;;** sl-ls
@@ -773,7 +782,7 @@ Also erases call to `eshell/fuck'."
   (eshell-thefuck-rule
    :match
    (lambda (command)
-     (string= (oref command :script) "sl"))
+     (string= (eieio-oref command 'script) "sl"))
    :get-new-command
    (lambda (_command)
      "ls")
@@ -785,11 +794,11 @@ Also erases call to `eshell/fuck'."
 (defvar-local eshell-thefuck--command-ind nil)
 
 (defvar eshell-thefuck-active-map (let ((map (make-sparse-keymap)))
-                            (define-key map [up] 'eshell-thefuck--selector-prev)
-                            (define-key map [down] 'eshell-thefuck--selector-next)
-                            (define-key map [return] 'eshell-thefuck--selector-select)
-                            (define-key map (kbd "C-c") 'eshell-interrupt-process)
-                            map))
+                                    (define-key map [up] 'eshell-thefuck--selector-prev)
+                                    (define-key map [down] 'eshell-thefuck--selector-next)
+                                    (define-key map [return] 'eshell-thefuck--selector-select)
+                                    (define-key map (kbd "C-c") 'eshell-interrupt-process)
+                                    map))
 
 (defun eshell-thefuck--insert-prompt ()
   "Insert prompt for current corrected command.
@@ -798,7 +807,9 @@ Command is taken from index `eshell-thefuck--comand-ind' in
 buffer-local-variable `eshell-thefuck--buffer-commands'."
 
   (insert
-   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
+   (eieio-oref (nth eshell-thefuck--command-ind
+                    eshell-thefuck--buffer-commands)
+               'script)
    " "
    "["
    (propertize "enter" 'face 'eshell-thefuck-enter-face)
@@ -832,7 +843,9 @@ buffer-local-variable `eshell-thefuck--buffer-commands'."
   (eshell-bol)
   (kill-line)
   (insert
-   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
+   (eieio-oref (nth eshell-thefuck--command-ind
+                    eshell-thefuck--buffer-commands)
+               'script)
    " "
    "["
    (propertize "enter" 'face 'eshell-thefuck-enter-face)
@@ -856,7 +869,9 @@ buffer-local-variable `eshell-thefuck--buffer-commands'."
   (eshell-bol)
   (kill-line)
   (insert
-   (oref (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands) :script)
+   (eieio-oref (nth eshell-thefuck--command-ind
+                    eshell-thefuck--buffer-commands)
+               'script)
    " "
    "["
    (propertize "enter" 'face 'eshell-thefuck-enter-face)
@@ -874,8 +889,9 @@ buffer-local-variable `eshell-thefuck--buffer-commands'."
   "Run currently displayed corrected command."
   (interactive)
   (let ((corrected (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands)))
-    (when (oref corrected :side-effect)
-      (funcall (oref corrected :side-effect))))
+    (with-slots (side-effect) corrected
+      (when side-effect
+        (funcall side-effect))))
   (search-backward " ")
   (kill-line)
   (eshell-send-input))
