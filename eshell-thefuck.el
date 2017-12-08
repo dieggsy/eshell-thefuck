@@ -966,9 +966,9 @@ buffer-local-variable `eshell-thefuck--buffer-commands'."
   "Run currently displayed corrected command."
   (interactive)
   (let ((corrected (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands)))
-    (with-slots (side-effect) corrected
+    (with-slots (side-effect script) corrected
       (when side-effect
-        (funcall side-effect))))
+        (funcall side-effect eshell-thefuck--old-command script))))
   (search-backward " ")
   (kill-line)
   (eshell-send-input))
