@@ -542,6 +542,49 @@ For example, vom -> vim."
   "git branch --delete list && git branch"
   :enabled t)
 
+;;** git-checkout
+(defun eshell-thefuck--get-git-branches ()
+  (let ((branches (split-string
+                   (shell-command-to-string
+                    "git branch -a --no-color --no-column")
+                   "\n"
+                   'omit-nulls)))
+    (delete-dups
+     (mapcar (lambda (line)
+               (when (string-prefix-p "*" line)
+                 (setq line (nth 1 (split-string line " "))))
+               (when (string-match-p "/" line)
+                 (setq line (car (last (split-string line "/")))))
+               (string-trim line))
+             branches))))
+
+(eshell-thefuck-new-rule git-checkout
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p (regexp-quote "did not match any file(s) known to git")
+                       <output>)
+       (not
+        (string-match-p (regexp-quote "Did you forget to 'git add'?")
+                        <output>))
+       t)
+  :get-new-command
+  (let* ((missing-file
+          (and (string-match
+                (concat "error: pathspec '\\([^']*\\)' "
+                        "did not match any "
+                        (regexp-quote "file(s) known to git."))
+                <output>)
+               (match-string 1 <output>)))
+         (closest-branch
+          (eshell-thefuck--get-closest missing-file
+                                       (eshell-thefuck--get-git-branches)
+                                       :fallback-to-first nil)))
+    (list
+     (when closest-branch
+       (eshell-thefuck--replace-argument <script> missing-file closest-branch))
+     (format "git checkout -b %s" missing-file)))
+  :enabled t)
+
 ;;** git-not-command
 (eshell-thefuck-new-rule git-not-command
   :for-app ("git" "hub")
