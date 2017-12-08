@@ -172,54 +172,89 @@ Also erases call to `eshell/fuck'."
                         :priority (* priority (1+ n)))))))
 
 ;;* Utils
+(cl-defun eshell-thefuck--parse-plist (plist)
+  (let ((known-kwords '(:for-app
+                        :sudo-support
+                        :match
+                        :get-new-command
+                        :enabled
+                        :side-effect
+                        :priority)))
+    (append
+     (when (stringp (car plist))
+       (prog1
+           `(:doc ,(car plist))
+         (setq plist (cdr plist))))
+     (cl-loop
+      while plist
+      as kword = (car plist)
+      as rest = (cdr plist)
+      append
+      (if (and (keywordp kword)
+               (member kword known-kwords))
+          (if (member kword '(:match :get-new-command :side-effect))
+              (let ((loc (or (cl-position-if #'keywordp rest)
+                             (length rest))))
+                (setq plist (cl-subseq rest loc))
+                (cons kword (list (cl-subseq rest 0 loc))))
+            (setq plist (cdr rest))
+            (list kword (car rest)))
+        (error "Keyword argument %s is not one of %s" kword known-kwords))))))
+
 (cl-defmacro eshell-thefuck-new-rule (name
-                                      &key
-                                      doc
-                                      for-app
-                                      sudo-support
-                                      (match #'ignore)
-                                      (get-new-command #'ignore)
-                                      enabled
-                                      side-effect
-                                      (priority 0))
+                                      &rest args)
   (declare (indent defun))
-  (let ((rule-decl
-         `(eshell-thefuck-rule
-           :match
-           ,(progn
-              (when for-app
-                (setq match `(eshell-thefuck--for-app ,for-app :special t ,match)))
-              (setq match `(with-slots ((<script> script)
-                                        (<output> output)
-                                        (<parts> script-parts))
-                               <cmd>
-                             ,match))
-              (setq match `(lambda (<cmd>) ,match))
-              (if sudo-support
-                  `(eshell-thefuck--sudo-support ,match)
-                match))
-           :get-new-command
-           ,(progn
-              (setq get-new-command `(lambda (<cmd>)
-                                       (with-slots ((<script> script)
-                                                    (<output> output)
-                                                    (<parts> script-parts))
-                                           <cmd>
-                                         ,get-new-command)))
-              (if sudo-support
-                  `(eshell-thefuck--sudo-support ,get-new-command)
-                get-new-command))
-           :enabled ,enabled
-           :side-effect
-           ,(progn
-              `(lambda (<old-cmd> <new-script>)
-                 (with-slots ((<old-script> script)
-                              (<old-output> output)
-                              (<old-parts> script-parts))
-                     <old-cmd>
-                   ,side-effect)))
-           :priority ,priority))
-        (rule-name (intern (concat "eshell-thefuck-rule-" (symbol-name name)))))
+  (let* ((arg-plist (eshell-thefuck--parse-plist args))
+         (doc (plist-get arg-plist :doc))
+         (for-app (plist-get arg-plist :for-app))
+         (sudo-support (plist-get arg-plist :sudo-support))
+         (match (plist-get arg-plist :match))
+         (get-new-command (plist-get arg-plist :get-new-command))
+         (enabled (plist-get arg-plist :enabled))
+         (side-effect (plist-get arg-plist :side-effect))
+         (priority (plist-get arg-plist :priority))
+         (rule-decl
+          `(eshell-thefuck-rule
+            :match
+            ,(if match
+                 (progn
+                   (when for-app
+                     (setq match `((eshell-thefuck--for-app ,for-app :special t ,@match))))
+                   (setq match `(with-slots ((<script> script)
+                                             (<output> output)
+                                             (<parts> script-parts))
+                                    <cmd>
+                                  ,@match))
+                   (setq match `(lambda (<cmd>) ,match))
+                   (if sudo-support
+                       `(eshell-thefuck--sudo-support ,match)
+                     match))
+               '#'ignore)
+            :get-new-command
+            ,(if get-new-command
+                 (progn
+                   (setq get-new-command `(lambda (<cmd>)
+                                            (with-slots ((<script> script)
+                                                         (<output> output)
+                                                         (<parts> script-parts))
+                                                <cmd>
+                                              ,@get-new-command)))
+                   (if sudo-support
+                       `(eshell-thefuck--sudo-support ,get-new-command)
+                     get-new-command))
+               '#'ignore)
+            :enabled ,enabled
+            :side-effect
+            ,(when side-effect
+               `(lambda (<old-cmd> <new-script>)
+                  (ignore <new-script> <old-cmd>)
+                  (with-slots ((<old-script> script)
+                               (<old-output> output)
+                               (<old-parts> script-parts))
+                      <old-cmd>
+                    ,@side-effect)))
+            :priority ,(or priority 0)))
+         (rule-name (intern (concat "eshell-thefuck-rule-" (symbol-name name)))))
     (if  (boundp rule-name)
         `(progn
            (when ,doc
@@ -428,7 +463,7 @@ Also erases call to `eshell/fuck'."
       not-corrected))))
 
 (eshell-thefuck-new-rule no-command
-  :doc "Fixes wrong console commands.
+  "Fixes wrong console commands.
 
 For example, vom -> vim."
   :sudo-support t
