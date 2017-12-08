@@ -210,7 +210,14 @@ Also erases call to `eshell/fuck'."
                   `(eshell-thefuck--sudo-support ,get-new-command)
                 get-new-command))
            :enabled ,enabled
-           :side-effect ,side-effect
+           :side-effect
+           ,(progn
+              `(lambda (<old-cmd> <new-script>)
+                 (with-slots ((<old-script> script)
+                              (<old-output> output)
+                              (<old-parts> script-parts))
+                     <old-cmd>
+                   ,side-effect)))
            :priority ,priority))
         (rule-name (intern (concat "eshell-thefuck-rule-" (symbol-name name)))))
     (if  (boundp rule-name)
