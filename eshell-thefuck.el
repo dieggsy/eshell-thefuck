@@ -895,7 +895,8 @@ buffer-local-variable `eshell-thefuck--buffer-commands'."
 (defun eshell-thefuck--selector-select ()
   "Run currently displayed corrected command."
   (interactive)
-  (let ((corrected (nth eshell-thefuck--command-ind eshell-thefuck--buffer-commands)))
+  (let ((corrected (nth eshell-thefuck--command-ind
+                        eshell-thefuck--buffer-commands)))
     (with-slots (side-effect script) corrected
       (when side-effect
         (funcall side-effect eshell-thefuck--old-command script))))
