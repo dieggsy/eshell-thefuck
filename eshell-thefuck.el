@@ -500,7 +500,8 @@ For example, vom -> vim."
   :for-app ("git" "hub")
   :match
   (and (string-match-p (regexp-quote "branch -d") <script>)
-       (string-match-p "If you are sure you want to delete it" <output>))
+       (string-match-p "If you are sure you want to delete it" <output>)
+       t)
   :get-new-command
   (eshell-thefuck--replace-argument <script> "-d" "-D")
   :enabled t)
@@ -512,7 +513,8 @@ For example, vom -> vim."
                         " is not a git command. See 'git --help'.")
                        <output>)
        (or (string-match-p "The most similar command" <output>)
-           (string-match-p "Did you mean" <output>)))
+           (string-match-p "Did you mean" <output>))
+       t)
   :get-new-command
   (let* ((broken-cmd
           (and (string-match "git: '\\([^']*\\)' is not a git command"
@@ -538,7 +540,8 @@ For example, vom -> vim."
   (let ((output (downcase <output>)))
     (or (string-match-p "no such file or directory" output)
         (string-match-p "cd: can't cd to" output)
-        (string-match-p "no such directory found" output)))
+        (string-match-p "no such directory found" output)
+        t))
   :get-new-command
   (let* ((sep (substring (concat (file-name-as-directory "a")
                                  "b")
@@ -589,7 +592,8 @@ For example, vom -> vim."
     (or (string-match-p "no such file or directory" output)
         (string-match-p "cd: can't cd to" output)
         (string-match-p "no such directory found" output)
-        (string-match-p "the system cannot find the path specified." output)))
+        (string-match-p "the system cannot find the path specified." output)
+        t))
   :get-new-command
   (replace-regexp-in-string "^cd \\(.*\\)"
                             "mkdir -p \\1 && cd \\1"
@@ -655,7 +659,8 @@ For example, vom -> vim."
   :match
   (and (not (string-match-p "-C" <script>))
        (eshell-thefuck--is-tar-extract <script>)
-       (eshell-thefuck--tar-file <parts>))
+       (eshell-thefuck--tar-file <parts>)
+       t)
   :get-new-command
   (let ((dir (eshell-quote-argument
               (cadr (eshell-thefuck--tar-file <parts>)))))
@@ -749,7 +754,8 @@ For example, vom -> vim."
 (eshell-thefuck-new-rule touch
   :for-app "touch"
   :match
-  (and (string-match-p "No such file or directory" <output>))
+  (and (string-match-p "No such file or directory" <output>)
+       t)
   :get-new-command
   (let ((path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
                                  <output>)
@@ -780,7 +786,8 @@ For example, vom -> vim."
 (eshell-thefuck-new-rule pacman
   :match
   (and (string-match-p "command not found" <output>)
-       (eshell-thefuck--get-pkgfile <parts>))
+       (eshell-thefuck--get-pkgfile <parts>)
+       t)
   :get-new-command
   (let ((packages (eshell-thefuck--get-pkgfile <parts>))
         (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
@@ -798,7 +805,8 @@ For example, vom -> vim."
   (and (or (member (car <parts>)'("pacman" "yaourt"))
            (and (>= (length <parts>) 2)
                 (equal (cl-subseq <parts> 0 2) '("sudo" "pacman"))))
-       (string-match-p "error: target not found:" <output>))
+       (string-match-p "error: target not found:" <output>)
+       t)
   :get-new-command
   (let ((pgr (car (last <parts>))))
     (eshell-thefuck--replace-command command
@@ -812,7 +820,8 @@ For example, vom -> vim."
   :sudo-support t
   :match
   (and (member "rm" <parts>)
-       (string-match-p "is a directory" (downcase <output>)))
+       (string-match-p "is a directory" (downcase <output>))
+       t)
   :get-new-command
   (let ((arguments (if (string-match-p "hdfs" <script>) "-r" "-rf")))
     (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
