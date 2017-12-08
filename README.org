@@ -14,7 +14,7 @@ E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just
 it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
-**** TODO Default [19/116]
+**** TODO Default [20/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -86,7 +86,8 @@ Fixes branch name or creates new branch
 Adds ~--no-index~ to previous ~git diff~ on untracked files
 ***** TODO ~git_diff_staged~
 Adds ~--staged~ to previous ~git diff~ with unexpected output
-***** TODO ~git_fix_stash~
+***** DONE ~git_fix_stash~
+CLOSED: [2017-12-08 Fri 18:39]
 Fixes ~git stash~ commands (misspelled subcommand and missing ~save~)
 ***** TODO ~git_flag_after_filename~
 Fixes ~fatal: bad flag '...' after filename~

@@ -552,7 +552,7 @@ For example, vom -> vim."
     (delete-dups
      (mapcar (lambda (line)
                (when (string-prefix-p "*" line)
-                 (setq line (nth 1 (split-string line " "))))
+                 (setq line (cadr (split-string line " "))))
                (when (string-match-p "/" line)
                  (setq line (car (last (split-string line "/")))))
                (string-trim line))
@@ -585,6 +585,37 @@ For example, vom -> vim."
      (format "git checkout -b %s" missing-file)))
   :enabled t)
 
+;;** git-fix-stash
+(eshell-thefuck-new-rule git-fix-stash
+  :for-app ("git" "hub")
+  :match
+  (and <parts>
+       (> (length <parts>) 1)
+       (string= "stash" (cadr <parts>))
+       (string-match-p "usage:" <output>)
+       t)
+  :get-new-command
+  (let* ((stash-commands '("apply"
+                           "branch"
+                           "clear"
+                           "drop"
+                           "list"
+                           "pop"
+                           "save"
+                           "show"))
+         (stash-cmd (caddr <parts>))
+         (fixed (eshell-thefuck--get-closest stash-cmd
+                                             stash-commands
+                                             :fallback-to-first nil)))
+    (list
+     (when fixed
+       (eshell-thefuck--replace-argument <script> stash-cmd fixed))
+     (string-join
+      (append
+       (cl-subseq <parts> 0 2)
+       (cons "save" (nthcdr 2 <parts>)))
+      " ")))
+  :enabled t)
 ;;** git-not-command
 (eshell-thefuck-new-rule git-not-command
   :for-app ("git" "hub")
