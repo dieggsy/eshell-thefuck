@@ -505,6 +505,32 @@ For example, vom -> vim."
   :get-new-command
   (eshell-thefuck--replace-argument <script> "-d" "-D")
   :enabled t)
+;;** git-branch-exists
+(eshell-thefuck-new-rule git-branch-exists
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p
+        "fatal: a branch named '\\([^']*\\)' already exists."
+        <output>)
+
+       t)
+  :get-new-command
+  (let ((branch-name
+         (and (string-match
+               "fatal: a branch named '\\([^']*\\)' already exists."
+               <output>)
+              (match-string 1 <output>)))
+        (new-command-templates '("git branch -d %s && git branch %s"
+                                 "git branch -d %s && git checkout -b %s"
+                                 "git branch -D %s && git branch %s"
+                                 "git branch -D %s && git checkout -b %s")))
+    (cons
+     (format "git checkout %s" branch-name)
+     (mapcar (lambda (x)
+               (format x branch-name branch-name))
+             new-command-templates)))
+  :enabled t)
+
 ;;** git-not-command
 (eshell-thefuck-new-rule git-not-command
   :for-app ("git" "hub")
