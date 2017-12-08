@@ -40,10 +40,6 @@
   "Correct the previous eshell command."
   :group 'eshell)
 
-(defgroup eshell-thefuck-faces nil
-  "Faces for eshell-thefuck"
-  :group 'eshell-thefuck)
-
 (defcustom eshell-thefuck-include-lisp-commands nil
   "If t, include all known emacs-lisp functions in known commands."
   :group 'eshell-thefuck
@@ -60,6 +56,10 @@
 Also erases call to `eshell/fuck'."
   :group 'eshell-thefuck
   :type 'boolean)
+
+(defgroup eshell-thefuck-faces nil
+  "Faces for eshell-thefuck"
+  :group 'eshell-thefuck)
 
 (defface eshell-thefuck-enter-face '((t (:foreground "#B8BB26")))
   "Face used for enter."
