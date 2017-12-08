@@ -427,204 +427,172 @@ Also erases call to `eshell/fuck'."
          (not (member (car (split-string line " ")) executables))))
       not-corrected))))
 
-(defvar eshell-thefuck-rule-no-command
-  (eshell-thefuck-rule
-   :match
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (with-slots (script-parts output) command
-         (let ((cmd (car script-parts)))
-           (and (not (eshell-thefuck--which cmd))
-                (string-match-p "command not found" output)
-                (difflib-get-close-matches cmd (eshell-thefuck--get-all-executables))
-                t)))))
-   :get-new-command
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (with-slots (script-parts) command
-         (let* ((old-command (car script-parts))
-                (already-used (eshell-thefuck--get-closest
-                               old-command
-                               (eshell-thefuck--get-used-executables command)
-                               :fallback-to-first nil))
-                (new-cmds (when already-used (list already-used)))
-                (new-commands
-                 (append new-cmds
-                         (cl-remove-if (lambda (cmd)
-                                         (member cmd new-cmds))
-                                       (difflib-get-close-matches
-                                        old-command
-                                        (eshell-thefuck--get-all-executables))))))
-           (mapcar
-            (lambda (new-command)
-              (string-join
-               (append (list new-command) (cdr script-parts))
-               " "))
-            new-commands)))))
-   :priority 3000
-   :enabled t))
+(eshell-thefuck-new-rule no-command
+  :doc "Fixes wrong console commands.
 
+For example, vom -> vim."
+  :sudo-support t
+  :match
+  (let ((cmd (car <parts>)))
+    (and (not (eshell-thefuck--which cmd))
+         (string-match-p "command not found" <output>)
+         (difflib-get-close-matches cmd (eshell-thefuck--get-all-executables))
+         t))
+  :get-new-command
+  (let* ((old-command (car <parts>))
+         (already-used (eshell-thefuck--get-closest
+                        old-command
+                        (eshell-thefuck--get-used-executables <cmd>)
+                        :fallback-to-first nil))
+         (new-cmds (when already-used (list already-used)))
+         (new-commands
+          (append new-cmds
+                  (cl-remove-if (lambda (cmd)
+                                  (member cmd new-cmds))
+                                (difflib-get-close-matches
+                                 old-command
+                                 (eshell-thefuck--get-all-executables))))))
+    (mapcar
+     (lambda (new-command)
+       (string-join
+        (append (list new-command) (cdr <parts>))
+        " "))
+     new-commands))
+  :priority 3000
+  :enabled t)
 ;;** git-branch-delete
-(defvar eshell-thefuck-rule-git-branch-delete
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app ("git" "hub")
-       (with-slots (script output) command
-         (and (string-match-p (regexp-quote "branch -d") script)
-              (string-match-p "If you are sure you want to delete it"
-                              output)))))
-   :get-new-command
-   (lambda (command)
-     (eshell-thefuck--replace-argument (eieio-oref command 'script)
-                                       "-d"
-                                       "-D"))
-   :enabled t))
+(eshell-thefuck-new-rule git-branch-delete
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p (regexp-quote "branch -d") <script>)
+       (string-match-p "If you are sure you want to delete it" <output>))
+  :get-new-command
+  (eshell-thefuck--replace-argument <script> "-d" "-D")
+  :enabled t)
 ;;** git-not-command
-(defvar eshell-thefuck-rule-git-not-command
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app ("git" "hub")
-       (with-slots (output) command
-         (and (string-match-p (regexp-quote " is not a git command. See 'git --help'.") output)
-              (or (string-match-p "The most similar command" output)
-                  (string-match-p "Did you mean" output))))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (output) command
-       (let* ((broken-cmd (and (string-match "git: '\\([^']*\\)' is not a git command"
-                                             output)
-                               (match-string 1 output)))
-              (matched (eshell-thefuck--get-all-matched-commands
-                        output
-                        :separator
-                        '("The most similar command"
-                          "Did you mean"))))
-         (message "matched: %S" matched)
-         (eshell-thefuck--replace-command command broken-cmd matched))))
-   :enabled t))
-
-;; (defvar eshell-thefuck-rule-git-)
-
+(eshell-thefuck-new-rule git-not-command
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p (regexp-quote
+                        " is not a git command. See 'git --help'.")
+                       <output>)
+       (or (string-match-p "The most similar command" <output>)
+           (string-match-p "Did you mean" <output>)))
+  :get-new-command
+  (let* ((broken-cmd
+          (and (string-match "git: '\\([^']*\\)' is not a git command"
+                             <output>)
+               (match-string 1 <output>)))
+         (matched (eshell-thefuck--get-all-matched-commands
+                   <output>
+                   :separator
+                   '("The most similar command"
+                     "Did you mean"))))
+    (message "matched: %S" matched)
+    (eshell-thefuck--replace-command <cmd> broken-cmd matched))
+  :enabled t)
 ;;** cd-correction
-(defvar eshell-thefuck-rule-cd-correction
-  ;; TODO: this should be able to replace cd anywhere in the command.
-  ;; TODO: looks like there's too many string-match-p's, pretty sure this
-  ;; should be fixed to one for eshell
-  ;; TODO: check out the behavior of "cd cd foo" in eshell
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app "cd"
-       (let ((output (downcase (eieio-oref command 'output))))
-         (or (string-match-p "no such file or directory" output)
-             (string-match-p "cd: can't cd to" output)
-             (string-match-p "no such directory found" output)))))
-   :get-new-command
-   (lambda (command)
-     (let* ((sep (substring (concat (file-name-as-directory "a")
-                                    "b")
-                            1
-                            2))
-            (dest (split-string (cadr (eieio-oref command 'script-parts))
-                                sep
-                                'omit-nulls))
-            (cwd default-directory))
-       (when (string= (car (last dest)) "")
-         (setq dest (butlast dest)))
-       (cl-loop for directory in dest
-                as best-matches = nil
-                do (cl-block body
-                     (cond ((string= directory ".")
-                            (cl-return-from body))
-                           ((string= directory "..")
-                            (setq cwd (car (split-string cwd sep 'omit-nulls)))
-                            (cl-return-from body)))
-                     (message "%S" directory)
-                     (setq best-matches
-                           (difflib-get-close-matches
-                            directory
-                            (mapcar
-                             #'file-name-nondirectory
-                             (cl-remove-if-not
-                              #'file-directory-p
-                              (directory-files
-                               cwd
-                               'full
-                               nil
-                               'nosort)))))
-                     (message "%S" (car best-matches))
-                     (if best-matches
-                         (setq cwd (expand-file-name (car best-matches) cwd)))))
-       (format "cd \"%s\"" cwd)))
-   :enabled t))
+;; TODO: this should be able to replace cd anywhere in the command.
+;; TODO: looks like there's too many string-match-p's, pretty sure this
+;; should be fixed to one for eshell
+;; TODO: check out the behavior of "cd cd foo" in eshell
+(eshell-thefuck-new-rule cd-correction
+  :sudo-support t
+  :for-app "cd"
+  :match
+  (let ((output (downcase <output>)))
+    (or (string-match-p "no such file or directory" output)
+        (string-match-p "cd: can't cd to" output)
+        (string-match-p "no such directory found" output)))
+  :get-new-command
+  (let* ((sep (substring (concat (file-name-as-directory "a")
+                                 "b")
+                         1
+                         2))
+         (dest (split-string (cadr <parts>)
+                             sep
+                             'omit-nulls))
+         (cwd default-directory))
+    (when (string= (car (last dest)) "")
+      (setq dest (butlast dest)))
+    (cl-loop for directory in dest
+             as best-matches = nil
+             do (cl-block body
+                  (cond ((string= directory ".")
+                         (cl-return-from body))
+                        ((string= directory "..")
+                         (setq cwd (car (split-string cwd sep 'omit-nulls)))
+                         (cl-return-from body)))
+                  (message "%S" directory)
+                  (setq best-matches
+                        (difflib-get-close-matches
+                         directory
+                         (mapcar
+                          #'file-name-nondirectory
+                          (cl-remove-if-not
+                           #'file-directory-p
+                           (directory-files
+                            cwd
+                            'full
+                            nil
+                            'nosort)))))
+                  (message "%S" (car best-matches))
+                  (if best-matches
+                      (setq cwd (expand-file-name (car best-matches) cwd)))))
+    (format "cd \"%s\"" cwd))
+  :enabled t)
 
 ;;** cd-mkdir
-(defvar eshell-thefuck-rule-cd-mkdir
-  ;; TODO: this should be able to replace cd anywhere in the command.
-  ;; TODO: looks like there's too many string-match-p's, pretty sure this
-  ;; should be fixed to one for eshell
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app "cd"
-       (let ((output (downcase (eieio-oref command 'output))))
-         (or (string-match-p "no such file or directory" output)
-             (string-match-p "cd: can't cd to" output)
-             (string-match-p "no such directory found" output)
-             (string-match-p "the system cannot find the path specified." output)))))
-   :get-new-command
-   (lambda (command)
-     (replace-regexp-in-string "^cd \\(.*\\)"
-                               "mkdir -p \\1 && cd \\1"
-                               (eieio-oref command 'script)))
-   :enabled t))
+;; TODO: this should be able to replace cd anywhere in the command.
+;; TODO: looks like there's too many string-match-p's, pretty sure this
+;; should be fixed to one for eshell
+(eshell-thefuck-new-rule cd-mkdir
+  :sudo-support t
+  :for-app "cd"
+  :match
+  (let ((output (downcase <output>)))
+    (or (string-match-p "no such file or directory" output)
+        (string-match-p "cd: can't cd to" output)
+        (string-match-p "no such directory found" output)
+        (string-match-p "the system cannot find the path specified." output)))
+  :get-new-command
+  (replace-regexp-in-string "^cd \\(.*\\)"
+                            "mkdir -p \\1 && cd \\1"
+                            <script>)
+  :enabled t)
 ;;** cd-parent
-(defvar eshell-thefuck-rule-cd-parent
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (string= (eieio-oref command 'script) "cd.."))
-   :get-new-command
-   (lambda (_command)
-     "cd ..")
-   :enabled t))
+(eshell-thefuck-new-rule cd-parent
+  :match
+  (string= <script> "cd..")
+  :get-new-command
+  "cd .."
+  :enabled t)
 
 ;;** chmod-x
-(defvar eshell-thefuck-rule-chmod-x
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (with-slots (script-parts script output) command
-       (and (string-prefix-p "./" script)
-            (string-match-p "permission denied" (downcase output))
-            (file-exists-p (car script-parts))
-            (not (file-executable-p (car script-parts))))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (script-parts script) command
-       (format "chmod +x %s && %s" (substring (car script-parts) 2) script)))
-   :enabled t))
+(eshell-thefuck-new-rule chmod-x
+  :match
+  (and (string-prefix-p "./" <script>)
+       (string-match-p "permission denied" (downcase <output>))
+       (file-exists-p (car <parts>))
+       (not (file-executable-p (car <parts>))))
+  :get-new-command
+  (format "chmod +x %s && %s" (substring (car <parts>) 2) <script>)
+  :enabled t)
 
 ;;** cp-omitting-directory
-(defvar eshell-thefuck-rule-cp-omitting-directory
-  ;; TODO: Should be able to replace cp anywhere in command
-  (eshell-thefuck-rule
-   :match
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (eshell-thefuck--for-app "cp"
-         (let ((output (downcase (eieio-oref command 'output))))
-           (and
-            (or (string-match-p "omitting directory" output)
-                (string-match-p "is a directory" output))
-            t)))))
-   :get-new-command
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (replace-regexp-in-string "^cp" "cp -a" (eieio-oref command 'script))))
-   :enabled t))
+;; TODO: Should be able to replace cp anywhere in command
+(eshell-thefuck-new-rule cp-omitting-directory
+  :for-app "cp"
+  :sudo-support t
+  :match
+  (let ((output (downcase <output>)))
+    (and
+     (or (string-match-p "omitting directory" output)
+         (string-match-p "is a directory" output))
+     t))
+  :get-new-command
+  (replace-regexp-in-string "^cp" "cp -a" <script>)
+  :enabled t)
 
 ;;** dirty-untar
 (defun eshell-thefuck--is-tar-extract (cmd)
@@ -647,153 +615,122 @@ Also erases call to `eshell/fuck'."
     (when c
       (list c (car (split-string c "\\." 'omit-nulls))))))
 
-(defvar eshell-thefuck-rule-dirty-untar
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app "tar"
-       (with-slots (script script-parts) command
-         (and (not (string-match-p "-C" script))
-              (eshell-thefuck--is-tar-extract script)
-              (eshell-thefuck--tar-file script-parts)))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (script script-parts) command
-       (let ((dir (eshell-quote-argument
-                   (cadr (eshell-thefuck--tar-file script-parts)))))
-         (format "mkdir -p %s && %s -C %s" dir script dir))))
-   :side-effect
-   (lambda (old-cmd _command)
-     (let ((tar-files
-            (split-string
-             (shell-command-to-string
-              (concat "tar -tf " (car (eshell-thefuck--tar-file
-                                       (eieio-oref old-cmd 'script-parts)))))
-             "\n"
-             'omit-nulls)))
-       (message "FILES: %S" tar-files)
-       (cl-loop for file in tar-files
-                do (ignore-errors
-                     (delete-file file)))))
-   :enabled t))
+(eshell-thefuck-new-rule dirty-untar
+  :for-app "tar"
+  :match
+  (and (not (string-match-p "-C" <script>))
+       (eshell-thefuck--is-tar-extract <script>)
+       (eshell-thefuck--tar-file <parts>))
+  :get-new-command
+  (let ((dir (eshell-quote-argument
+              (cadr (eshell-thefuck--tar-file <parts>)))))
+    (format "mkdir -p %s && %s -C %s" dir <script> dir))
+  :side-effect
+  (let ((tar-files
+         (split-string
+          (shell-command-to-string
+           (concat "tar -tf " (car (eshell-thefuck--tar-file
+                                    <old-parts>))))
+          "\n"
+          'omit-nulls)))
+    (cl-loop for file in tar-files
+             do (ignore-errors
+                  (delete-file file))))
+  :enabled t)
 
 ;;** sudo
-(defvar eshell-thefuck-rule-sudo
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (with-slots (output script-parts) command
-       (let ((patterns '("permission denied"
-                         "eacces"
-                         "pkg: insufficient privileges"
-                         "you cannot perform this operation unless you are root"
-                         "non-root users cannot"
-                         "operation not permitted"
-                         "root privilege"
-                         "this command has to be run under the root user."
-                         "this operation requires root."
-                         "requested operation requires superuser privilege"
-                         "must be run as root"
-                         "must run as root"
-                         "must be superuser"
-                         "must be root"
-                         "need to be root"
-                         "need root"
-                         "needs to be run as root"
-                         "only root can "
-                         "you don\"t have access to the history db."
-                         "authentication is required"
-                         "edspermissionerror"
-                         "you don\"t have write permissions"
-                         "use `sudo`"
-                         "SudoRequiredError"
-                         "error: insufficient privileges")))
-         (cl-block match
-           (when (and (not (member "&&" script-parts))
-                      (string= (car script-parts) "sudo"))
-             (cl-return-from match nil))
-           (cl-loop
-            for pattern in patterns
-            if (string-match-p (regexp-quote pattern) output)
-            do (cl-return-from match t))))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (script script-parts) command
-       (cond ((string-match-p "&&" script)
-              (format "sudo sh -c \"%s\""
-                      (eshell-thefuck--escape-quotes
-                       (string-join (cl-remove-if
-                                     (lambda (part)
-                                       (string= part "sudo"))
-                                     script-parts)
-                                    " "))))
-             ((string-match-p ">" script)
-              (format "sudo sh -c \"%s\""
-                      (eshell-thefuck--escape-quotes script-parts)))
-             (t (format "sudo %s" script)))))
-   :enabled t))
+(eshell-thefuck-new-rule sudo
+  :match
+  (let ((patterns '("permission denied"
+                    "eacces"
+                    "pkg: insufficient privileges"
+                    "you cannot perform this operation unless you are root"
+                    "non-root users cannot"
+                    "operation not permitted"
+                    "root privilege"
+                    "this command has to be run under the root user."
+                    "this operation requires root."
+                    "requested operation requires superuser privilege"
+                    "must be run as root"
+                    "must run as root"
+                    "must be superuser"
+                    "must be root"
+                    "need to be root"
+                    "need root"
+                    "needs to be run as root"
+                    "only root can "
+                    "you don\"t have access to the history db."
+                    "authentication is required"
+                    "edspermissionerror"
+                    "you don\"t have write permissions"
+                    "use `sudo`"
+                    "SudoRequiredError"
+                    "error: insufficient privileges")))
+    (cl-block match
+      (when (and (not (member "&&" <parts>))
+                 (string= (car <parts>) "sudo"))
+        (cl-return-from match nil))
+      (cl-loop
+       for pattern in patterns
+       if (string-match-p (regexp-quote pattern) <output>)
+       do (cl-return-from match t))))
+  :get-new-command
+  (cond ((string-match-p "&&" <script>)
+         (format "sudo sh -c \"%s\""
+                 (eshell-thefuck--escape-quotes
+                  (string-join (cl-remove-if
+                                (lambda (part)
+                                  (string= part "sudo"))
+                                <parts>)
+                               " "))))
+        ((string-match-p ">" <script>)
+         (format "sudo sh -c \"%s\""
+                 (eshell-thefuck--escape-quotes <parts>)))
+        (t (format "sudo %s" <script>)))
+  :enabled t)
 
 ;;** ls-all
-(defvar eshell-thefuck-rule-ls-all
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app "ls"
-       (string= (string-trim (eieio-oref command 'output)) "")))
-   :get-new-command
-   (lambda (command)
-     (string-join (append '("ls" "-a") (cdr (eieio-oref command 'script-parts))) " "))
-   :enabled t))
+(eshell-thefuck-new-rule ls-all
+  :for-app "ls"
+  :match
+  (string= (string-trim <output>) "")
+  :get-new-command
+  (string-join (append '("ls" "-a") (cdr <parts>)) " ")
+  :enabled t)
 
 ;;** mkdir-p
-(defvar eshell-thefuck-rule-mkdir-p
-  (eshell-thefuck-rule
-   :match
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (with-slots (script output) command
-         (and (string-match-p "mkdir" script)
-              (string-match-p "No such file or directory" output)
-              t))))
-   :get-new-command
-   (eshell-thefuck--sudo-support
-     (lambda (command)
-       (replace-regexp-in-string
-        (rx bow "mkdir " (group (0+ nonl)))
-        "mkdir -p \\1"
-        (eieio-oref command 'script))))
-   :enabled t))
+(eshell-thefuck-new-rule mkdir-p
+  :sudo-support t
+  :match
+  (and (string-match-p "mkdir" <script>)
+       (string-match-p "No such file or directory" <output>)
+       t)
+  :get-new-command
+  (replace-regexp-in-string
+   (rx bow "mkdir " (group (0+ nonl))) "mkdir -p \\1" <script>)
+  :enabled t)
 
 ;;** touch
-(defvar eshell-thefuck-rule-touch
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (eshell-thefuck--for-app "touch"
-       (and (string-match-p "No such file or directory"
-                            (eieio-oref command 'output)))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (output script) command
-       (let* ((path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
-                                       output)
-                         (match-string 1 output))))
-         (format "mkdir -p %s && %s" path script))))
-   :enabled t))
+(eshell-thefuck-new-rule touch
+  :for-app "touch"
+  :match
+  (and (string-match-p "No such file or directory" <output>))
+  :get-new-command
+  (let ((path (and (string-match "touch: cannot touch '\\(.+\\)/.+?':"
+                                 <output>)
+                   (match-string 1 <output>))))
+    (format "mkdir -p %s && %s" path <script>))
+  :enabled t)
 
 ;;** dry
-(defvar eshell-thefuck-rule-dry
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (let ((split-command (eieio-oref command 'script-parts)))
-       (and (>= (length split-command) 2)
-            (string= (car split-command) (cadr split-command)))))
-   :get-new-command
-   (lambda (command)
-     (string-join (cdr (eieio-oref command 'script-parts)) " "))
-   :priority 900
-   :enabled t))
+(eshell-thefuck-new-rule dry
+  :match
+  (and (>= (length <parts>) 2)
+       (string= (car <parts>) (cadr <parts>)))
+  :get-new-command
+  (string-join (cdr <parts>) " ")
+  :priority 900
+  :enabled t)
 
 ;;** pacman
 (defun eshell-thefuck--get-pkgfile (parts)
@@ -804,71 +741,57 @@ Also erases call to `eshell/fuck'."
                     'omit-nulls)))
     packages))
 
-(defvar eshell-thefuck-rule-pacman
-  ;; TODO: this conflicts with pacman-not-found, example: sudo pacman -S llc
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (with-slots (output script-parts) command
-       (and (string-match-p "command not found" output)
-            (eshell-thefuck--get-pkgfile script-parts))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (script script-parts) command
-       (let ((packages (eshell-thefuck--get-pkgfile script-parts))
-             (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
-         (mapcar (lambda (package)
-                   (format "%s -S %s && %s" pacman package script))
-                 packages))))
-   :enabled (and (executable-find "pkgfile")
-                 (executable-find "pacman"))
-   :priority 3000))
+;; TODO: this conflicts with pacman-not-found, example: sudo pacman -S llc
+(eshell-thefuck-new-rule pacman
+  :match
+  (and (string-match-p "command not found" <output>)
+       (eshell-thefuck--get-pkgfile <parts>))
+  :get-new-command
+  (let ((packages (eshell-thefuck--get-pkgfile <parts>))
+        (pacman (if (executable-find "yaourt") "yaourt" "sudo pacman")))
+    (mapcar (lambda (package)
+              (format "%s -S %s && %s" pacman package <script>))
+            packages))
+  :enabled (and (executable-find "pkgfile")
+                (executable-find "pacman"))
+  :priority 3000)
 
 ;;** pacman-not-found
-(defvar eshell-thefuck-rule-pacman-not-found
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (with-slots (output script-parts) command
-       (let ((script-parts script-parts))
-         (and (or (member (car script-parts) '("pacman" "yaourt"))
-                  (and (>= (length script-parts) 2)
-                       (equal (cl-subseq script-parts 0 2) '("sudo" "pacman"))))
-              (string-match-p "error: target not found:" output)))))
-   :get-new-command
-   (lambda (command)
-     (let ((pgr (car (last (eieio-oref command 'script-parts)))))
-       (eshell-thefuck--replace-command command pgr (eshell-thefuck--get-pkgfile `(,pgr)))))
-   :enabled (and (executable-find "pkgfile")
-                 (executable-find "pacman"))))
+(eshell-thefuck-new-rule pacman-not-found
+  :sudo-support t
+  :match
+  (and (or (member (car <parts>)'("pacman" "yaourt"))
+           (and (>= (length <parts>) 2)
+                (equal (cl-subseq <parts> 0 2) '("sudo" "pacman"))))
+       (string-match-p "error: target not found:" <output>))
+  :get-new-command
+  (let ((pgr (car (last <parts>))))
+    (eshell-thefuck--replace-command command
+                                     pgr
+                                     (eshell-thefuck--get-pkgfile `(,pgr))))
+  :enabled (and (executable-find "pkgfile")
+                (executable-find "pacman")))
 
 ;;** rm-dir
-(defvar eshell-thefuck-rule-rm-dir
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (with-slots (script-parts output) command
-       (and (member "rm" script-parts)
-            (string-match-p "is a directory" (downcase output)))))
-   :get-new-command
-   (lambda (command)
-     (with-slots (script) command
-       (let ((arguments (if (string-match-p "hdfs" script) "-r" "-rf")))
-         (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
-                                   (concat "rm " arguments " \\1")
-                                   script))))
-   :enabled t))
+(eshell-thefuck-new-rule rm-dir
+  :sudo-support t
+  :match
+  (and (member "rm" <parts>)
+       (string-match-p "is a directory" (downcase <output>)))
+  :get-new-command
+  (let ((arguments (if (string-match-p "hdfs" <script>) "-r" "-rf")))
+    (replace-regexp-in-string (rx bow "rm " (group (0+ nonl)))
+                              (concat "rm " arguments " \\1")
+                              <script>))
+  :enabled t)
 
 ;;** sl-ls
-(defvar eshell-thefuck-rule-sl-ls
-  (eshell-thefuck-rule
-   :match
-   (lambda (command)
-     (string= (eieio-oref command 'script) "sl"))
-   :get-new-command
-   (lambda (_command)
-     "ls")
-   :enabled t))
+(eshell-thefuck-new-rule sl-ls
+  :match
+  (string=  <script> "sl")
+  :get-new-command
+  "ls"
+  :enabled t)
 
 ;;* UI/backend
 (defvar-local eshell-thefuck--old-command nil)
