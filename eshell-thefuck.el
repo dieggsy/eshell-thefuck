@@ -692,16 +692,17 @@ For example, vom -> vim."
               (cadr (eshell-thefuck--tar-file <parts>)))))
     (format "mkdir -p %s && %s -C %s" dir <script> dir))
   :side-effect
-  (let ((tar-files
-         (split-string
-          (shell-command-to-string
-           (concat "tar -tf " (car (eshell-thefuck--tar-file
-                                    <old-parts>))))
-          "\n"
-          'omit-nulls)))
-    (cl-loop for file in tar-files
-             do (ignore-errors
-                  (delete-file file))))
+  (when (y-or-n-p "SIDE EFFECT: Remove untarred files?")
+    (let ((tar-files
+           (split-string
+            (shell-command-to-string
+             (concat "tar -tf " (car (eshell-thefuck--tar-file
+                                      <old-parts>))))
+            "\n"
+            'omit-nulls)))
+      (cl-loop for file in tar-files
+               do (ignore-errors
+                    (delete-file file)))))
   :enabled t)
 
 ;;** sudo
