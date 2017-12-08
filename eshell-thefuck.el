@@ -531,6 +531,17 @@ For example, vom -> vim."
              new-command-templates)))
   :enabled t)
 
+;;** git-branch-list
+(eshell-thefuck-new-rule git-branch-list
+  :for-app ("git" "hub")
+  :match
+  (and <parts>
+       (message "%S" (cl-subseq <parts> 1))
+       (equal (cl-subseq <parts> 1) '("branch" "list")))
+  :get-new-command
+  "git branch --delete list && git branch"
+  :enabled t)
+
 ;;** git-not-command
 (eshell-thefuck-new-rule git-not-command
   :for-app ("git" "hub")

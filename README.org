@@ -14,7 +14,7 @@ E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just
 it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
-**** TODO Default [17/116]
+**** TODO Default [18/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -76,7 +76,8 @@ Changes ~git branch -d~ to ~git branch -D~
 ***** DONE ~git_branch_exists~
 CLOSED: [2017-12-07 Thu 23:32]
 Offers ~git branch -d foo~, ~git branch -D foo~ or ~git checkout foo~ when creating a branch that already exists
-***** TODO ~git_branch_list~
+***** DONE ~git_branch_list~
+CLOSED: [2017-12-07 Thu 23:47]
 Catches ~git branch list~ in place of ~git branch~ and removes created branch
 ***** TODO ~git_checkout~
 Fixes branch name or creates new branch
