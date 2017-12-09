@@ -14,7 +14,7 @@ E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just
 it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
-**** TODO Default [20/116]
+**** TODO Default [21/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -96,7 +96,8 @@ Fixes ~git help <alias>~ commands replacing <alias> with the aliased command
 ***** DONE [[file:eshell-thefuck.el::eshell-thefuck-rule-git-not-command][git-not-command]]
 CLOSED: [2017-11-10 Fri 21:44]
 Fixes wrong git commands like ~git brnch~
-***** TODO ~git_pull~
+***** DONE ~git_pull~
+CLOSED: [2017-12-08 Fri 21:34]
 Sets upstream before executing previous ~git pull~
 ***** TODO ~git_pull_clone~
 Clones instead of pulling when the repo does not exist

@@ -536,7 +536,6 @@ For example, vom -> vim."
   :for-app ("git" "hub")
   :match
   (and <parts>
-       (message "%S" (cl-subseq <parts> 1))
        (equal (cl-subseq <parts> 1) '("branch" "list")))
   :get-new-command
   "git branch --delete list && git branch"
@@ -636,8 +635,23 @@ For example, vom -> vim."
                    :separator
                    '("The most similar command"
                      "Did you mean"))))
-    (message "matched: %S" matched)
     (eshell-thefuck--replace-command <cmd> broken-cmd matched))
+  :enabled t)
+;;** git-pull
+(eshell-thefuck-new-rule git-pull
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p "pull" <script>)
+       (string-match-p "set-upstream" <output>)
+       t)
+  :get-new-command
+  (let* ((line (car (last (split-string <output> "\n" 'omit-nulls "\s*"))))
+         (branch (car (last (split-string line " "))))
+         (set-upstream (replace-regexp-in-string
+                        "<branch>"
+                        branch
+                        (replace-regexp-in-string "<remote>" "origin" line))))
+    (format "%s && %s" set-upstream <script>))
   :enabled t)
 ;;** cd-correction
 ;; TODO: this should be able to replace cd anywhere in the command.
@@ -672,7 +686,6 @@ For example, vom -> vim."
                         ((string= directory "..")
                          (setq cwd (car (split-string cwd sep 'omit-nulls)))
                          (cl-return-from body)))
-                  (message "%S" directory)
                   (setq best-matches
                         (difflib-get-close-matches
                          directory
@@ -685,7 +698,6 @@ For example, vom -> vim."
                             'full
                             nil
                             'nosort)))))
-                  (message "%S" (car best-matches))
                   (if best-matches
                       (setq cwd (expand-file-name (car best-matches) cwd)))))
     (format "cd \"%s\"" cwd))
