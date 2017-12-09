@@ -34,6 +34,10 @@
 (require 'eshell)
 (require 'em-prompt)
 (require 'eieio)
+(eval-when-compile
+  (require 'rx)
+  (require 'em-hist)
+  (require 'subr-x))
 
 ;;* Customization
 (defgroup eshell-thefuck nil
