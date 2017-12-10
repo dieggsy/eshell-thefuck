@@ -14,7 +14,7 @@ E.g. rules that work on ~cd~ should work on it /anywhere/ in a command, not just
 it starts with cd. This involves both ~eshell-thefuck--for-app~ and the actual new
 commands returned in ~:get-new-commmand~.
 *** TODO Rule coverage [0/2]
-**** TODO Default [21/116]
+**** TODO Default [25/116]
 ***** TODO ~ag_literal~
 Adds ~-Q~ to ~ag~ when suggested
 ***** TODO ~aws_cli~
@@ -103,13 +103,17 @@ Sets upstream before executing previous ~git pull~
 Clones instead of pulling when the repo does not exist
 ***** TODO ~git_pull_uncommitted_changes~
 Stashes changes before pulling and pops them afterwards
-***** TODO ~git_push~
+***** DONE ~git_push~
+CLOSED: [2017-12-09 Sat 21:45]
 Adds ~--set-upstream origin $branch~ to previous failed ~git push~
-***** TODO ~git_push_different_branch_names~
+***** DONE ~git_push_different_branch_names~
+CLOSED: [2017-12-09 Sat 22:50]
 Fixes pushes when local brach name does not match remote branch name
-***** TODO ~git_push_pull~
+***** DONE ~git_push_pull~
+CLOSED: [2017-12-09 Sat 23:03]
 Runs ~git pull~ when ~push~ was rejected
-***** TODO ~git_push_without_commits~
+***** DONE ~git_push_without_commits~
+CLOSED: [2017-12-09 Sat 23:16]
 Creates an initial commit if you forget and only ~git add .~, when setting up a new project
 ***** TODO ~git_rebase_no_changes~
 Runs ~git rebase --skip~ instead of ~git rebase --continue~ when there are no changes

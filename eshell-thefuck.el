@@ -657,6 +657,84 @@ For example, vom -> vim."
                         (replace-regexp-in-string "<remote>" "origin" line))))
     (format "%s && %s" set-upstream <script>))
   :enabled t)
+;;** git-push
+(defun eshell-thefuck--get-upstream-option-index (command-parts)
+  (cond ((member "--set-upstream" command-parts)
+         (cl-position "--set-upstream" command-parts :test #'string=))
+        ((member "-u" command-parts)
+         (cl-position "-u" command-parts :test #'string=))))
+
+(eshell-thefuck-new-rule git-push
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p "push" <script>)
+       (string-match-p "set-upstream" <output>)
+       t)
+  :get-new-command
+  (let* ((command-parts <parts>)
+         (upstream-option-index
+          (eshell-thefuck--get-upstream-option-index command-parts))
+         (arguments (and (string-match "git push \\(.*\\)" <output>)
+                         (string-trim
+                          (match-string 1 <output>)))))
+    (when upstream-option-index
+      (pop (nthcdr command-parts upstream-option-index))
+      (when (> (length command-parts) (upstream-option-index))
+        (pop (nthcdr command-parts upstream-option-index))))
+    (eshell-thefuck--replace-argument (string-join command-parts " ")
+                                      "push"
+                                      (format "push %s" arguments)))
+  :enabled t)
+;;** git-push-different-branch-names
+(eshell-thefuck-new-rule git-push-different-branch-names
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p "push" <script>)
+       (string-match-p "The upstream branch of your current branch does not match"
+                       <output>)
+       t)
+  :get-new-command
+  (let* ((start-pos 0)
+         (all-matches
+          (cl-loop
+           for match-pos = (string-match "\\(git push [^\s\n]+ [^\s\n]+$\\)"
+                                         <output>
+                                         start-pos)
+           while match-pos
+           collect (match-string 1 <output>)
+           do (setq start-pos (1+ match-pos))))
+         (branch-name (car (last (split-string (car all-matches) ":")))))
+    (cons
+     (format "git branch -m %s && git push" branch-name)
+     all-matches))
+  :enabled t)
+;;** git-push-pull
+(eshell-thefuck-new-rule git-push-pull
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p "push" <script>)
+       (string-match-p (regexp-quote "! [rejected]") <output>)
+       (string-match-p "failed to push some refs to" <output>)
+       (or
+        (string-match-p "Updates were rejected because the tip of your current branch is behind"
+                        <output>)
+        (string-match-p "Updates were rejected because the remote constains work that you do"
+                        <output>))
+       t)
+  :get-new-command
+  (format "%s && %s"
+          (eshell-thefuck--replace-argument <script> "push" "pull")
+          <script>)
+  :enabled t)
+;;** git-push-without-commits
+(eshell-thefuck-new-rule git-push-without-commits
+  :for-app ("git" "hub")
+  :match
+  (and (string-match-p "src refspec [^\n\s]+ does not match any\\." <output>)
+       t)
+  :get-new-command
+  (format "git commit -m \"Initial commit\" && %s" <script>)
+  :enabled t)
 ;;** cd-correction
 ;; TODO: this should be able to replace cd anywhere in the command.
 ;; TODO: looks like there's too many string-match-p's, pretty sure this
