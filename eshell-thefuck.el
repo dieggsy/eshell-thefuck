@@ -439,14 +439,60 @@ Also erases call to `eshell/fuck'."
                     (mapcar (lambda (x) (format "sudo %s" x)) result))
                    (t result))))))))
 
-;; TODO: implement alias expansion
-;; (defun eshell-thefuck--expand-aliases (script)
-;;   (let ((aliases eshell-command-aliases-list))
-;;     (mapcar (lambda (cell)
-;;               (let ((def cadr cell))
-;;                 (when string-match-p "\\$\\(?:[[:digit:]]\\|\\*\\)"
-;;                       ))))))
+(defun eshell-thefuck--re-find-all (regex string)
+  "Find all matches of REGEX in STRING."
+  (let ((start-pos 0))
+    (cl-loop
+     for match-pos = (string-match regex string start-pos)
+     while match-pos
+     collect (match-string 1 string)
+     do (setq start-pos (1+ match-pos)))))
 
+(defun eshell-thefuck--expand-aliases (script)
+  "Expand all eshell aliases in SCRIPT."
+  ;; Catch duplicate &&
+  (setq script
+        (replace-regexp-in-string "\\(&& \\)+" "&& " script))
+  ;; Find all sub-commands (beginning, parts between && and |)
+  (let* ((regex (rx (group (or bol "&&" "|")
+                           (opt " ")
+                           (minimal-match
+                            (1+ nonl)))
+                    (or eol "&&" "|")))
+         (sub-str (eshell-thefuck--re-find-all regex script))
+         (sub-parts (mapcar (lambda (str)
+                              (split-string str nil 'omit-nulls "\s"))
+                            sub-str)))
+
+    (string-join
+     ;; for every sub command, split and expand if possible
+     (cl-loop for thing in sub-parts
+              as second = (string-match-p "\\(&&\\||\\)" (car thing))
+              as cmd = (if second (cadr thing) (car thing))
+              as args = (nthcdr (if second 2 1) thing)
+              as alias = (eshell-lookup-alias cmd)
+              if alias
+              collect (concat
+                       (when second
+                         (format "%s "
+                                 (car thing)))
+                       (eshell-thefuck--replace-pos-args (cadr alias) args))
+              else
+              collect (string-join thing " "))
+     " ")))
+
+(defun eshell-thefuck--replace-pos-args (string args)
+  "Replace positional args ARGS in STRING.
+
+Assumes string is an eshell alias definition."
+  (setq string
+        (replace-regexp-in-string "\\$\\*" (string-join args " ") string))
+  (cl-loop while (string-match-p "\\$\\|\\([[:digit:]]\\|\\*\\)" string)
+           as digit = 1 then (1+ digit)
+           do (setq string (replace-regexp-in-string (format "$%s" digit)
+                                                     (nth (1- digit) args)
+                                                     string))
+           finally return string))
 ;;* Rules
 ;;** no-command
 (defun eshell-thefuck--get-used-executables (command)
