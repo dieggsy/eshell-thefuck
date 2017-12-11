@@ -740,15 +740,9 @@ For example, vom -> vim."
                        <output>)
        t)
   :get-new-command
-  (let* ((start-pos 0)
-         (all-matches
-          (cl-loop
-           for match-pos = (string-match "\\(git push [^\s\n]+ [^\s\n]+$\\)"
-                                         <output>
-                                         start-pos)
-           while match-pos
-           collect (match-string 1 <output>)
-           do (setq start-pos (1+ match-pos))))
+  (let* ((all-matches
+          (eshell-thefuck--re-find-all "\\(git push [^\s\n]+ [^\s\n]+$\\)"
+                                       <output>))
          (branch-name (car (last (split-string (car all-matches) ":")))))
     (cons
      (format "git branch -m %s && git push" branch-name)
