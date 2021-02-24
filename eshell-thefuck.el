@@ -1,7 +1,7 @@
 ;;; eshell-thefuck.el --- Correct the previous eshell command. -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 Diego A. Mundo
-;; Author: Diego A. Mundo <diegoamundo@gmail.com>
+;; Author: Diego A. Mundo <dieggsy@pm.me>
 ;; URL: http://github.com/dieggsy/eshell-thefuck
 ;; Git-Repository: git://github.com/dieggsy/eshell-thefuck
 ;; Created: 2017-11-01
